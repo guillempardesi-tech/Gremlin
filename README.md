@@ -87,8 +87,12 @@ numbers from a launch monitor.
 ### 4. Impact model (per club)
 Ball speed = clubhead speed × the club's **smash factor**; launch angle and spin
 come from the club's reference dynamic-launch values with spin scaled linearly
-with clubhead speed (spin loft is a club property — Penner 2003). All 15 club
-entries are anchored to the published **TrackMan PGA Tour averages**.
+with clubhead speed (spin loft is a club property — Penner 2003). The bag holds
+**26 clubs** (driver through 64° wedge, including odd woods, hybrids and long
+irons): 13 entries carry the published **TrackMan PGA Tour averages** verbatim
+and anchor the physics calibration; the rest are interpolated from those
+anchors by loft and length, flagged `est` in the data, and never used for
+calibration scoring.
 
 ### 5. Ball flight physics
 Full equations of motion for a spinning sphere, integrated with **RK4** at 4 ms
@@ -171,10 +175,11 @@ swinglab-standalone.html   the whole app in one double-clickable file (built)
 css/style.css              dark, video-first UI
 js/main.js                 camera + MediaPipe loop + UI orchestration
 js/swing.js                One-Euro filtering, phase machine, biomechanics, CHS estimator
-js/clubs.js                15-club database (TrackMan tour anchors)
+js/clubs.js                26-club database (TrackMan tour anchors + interpolations)
 js/physics.js              drag + Magnus RK4 flight simulator (calibrated)
 js/advice.js               fault rules → advice + swing score
-js/trajectory.js           animated ball-flight chart
+js/trajectory.js           animated ball-flight chart (hover tooltip, PB marker)
+js/storage.js              persistence: settings + leaderboard (localStorage w/ fallback)
 tools/validate.mjs         physics validation & calibration harness
 tools/test-swing.mjs       end-to-end synthetic-swing pipeline test
 tools/build-standalone.mjs single-file bundler (also emits an artifact variant)

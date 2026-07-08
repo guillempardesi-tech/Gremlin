@@ -13,7 +13,7 @@
       <span class="brand-mark">⛳</span>
       <div>
         <h1>SwingLab</h1>
-        <p class="tagline">Real-time swing analysis · physics-based ball flight</p>
+        <p class="tagline">Swing analysis · calibrated flight physics</p>
       </div>
     </div>
     <div class="club-picker">
@@ -99,19 +99,28 @@
     <section class="results-col">
       <div id="results" class="hidden">
         <div class="hero-card">
-          <div class="hero-label">Carry distance</div>
+          <div class="hero-top">
+            <div class="hero-label">Carry distance</div>
+            <span id="pbBadge" class="pb-badge hidden">◆ New personal best</span>
+          </div>
           <div class="hero-row">
             <span id="carryValue" class="hero-figure">–</span>
             <span id="carryUnit" class="hero-unit">yd</span>
           </div>
-          <div id="carryClub" class="hero-sub"></div>
+          <div class="hero-foot">
+            <div id="carryClub" class="hero-sub"></div>
+            <div id="carryDelta" class="hero-delta"></div>
+          </div>
         </div>
 
         <div id="statGrid" class="stat-grid"></div>
 
         <div class="card">
           <h3>Ball flight</h3>
-          <canvas id="trajCanvas" class="traj-canvas"></canvas>
+          <div class="traj-wrap">
+            <canvas id="trajCanvas" class="traj-canvas"></canvas>
+            <div id="trajTip" class="traj-tip hidden"></div>
+          </div>
         </div>
 
         <div class="card" id="reviewCard">
@@ -122,6 +131,19 @@
           <ul id="adviceList" class="advice-list"></ul>
         </div>
 
+      </div>
+
+      <div class="card leaderboard-card">
+        <div class="score-row">
+          <h3>Personal leaderboard</h3>
+          <button id="lbClear" class="ghost-btn btn-small hidden">Clear</button>
+        </div>
+        <p id="lbNote" class="lb-note"></p>
+        <p id="leaderboardEmpty" class="lb-empty">Your ten longest shots will be kept here — hit one.</p>
+        <ol id="leaderboardList" class="lb-list"></ol>
+      </div>
+
+      <div id="resultsTail">
         <div id="historyWrap" class="card hidden">
           <h3>Session history</h3>
           <div class="table-scroll">

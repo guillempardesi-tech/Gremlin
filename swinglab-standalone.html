@@ -6,32 +6,47 @@
   <title>SwingLab — real-time golf swing analyzer</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9B%B3%3C/text%3E%3C/svg%3E" />
   <style>
-/* SwingLab — dark, video-first UI.
-   Chart & chrome tokens follow the validated reference palette (dark mode). */
+/* SwingLab — "floodlit night range" identity.
+   Deep turf-green blacks, champagne-gold chrome (scoreboard language),
+   validated data-blue reserved for chart marks. Georgia carries the
+   wordmark and leaderboard; the system sans carries data. Deliberately
+   single-theme: this is a camera app pointed at a dark range. */
 
 :root {
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #222220;
-  --ink: #ffffff;
-  --ink-2: #c3c2b7;
-  --muted: #898781;
-  --grid: #2c2c2a;
-  --baseline: #383835;
-  --border: rgba(255, 255, 255, 0.10);
-  --series: #3987e5;      /* categorical slot 1, dark step */
+  --page: #0a0e0b;
+  --surface: #131a14;
+  --surface-2: #1a231c;
+  --surface-3: #212b22;
+  --ink: #f2f5ef;
+  --ink-2: #c3cdbf;
+  --muted: #83917f;
+  --grid: #233024;
+  --baseline: #3a4a3c;
+  --border: rgba(242, 245, 239, 0.09);
+  --series: #3987e5;      /* data marks only */
+  --gold: #d8b46a;
+  --gold-bright: #e6c684;
+  --gold-dim: rgba(216, 180, 106, 0.55);
+  --gold-faint: rgba(216, 180, 106, 0.16);
+  --gold-ink: #0a0e0b;
   --good: #0ca30c;
+  --good-text: #4fc26b;
   --warning: #fab219;
   --serious: #ec835a;
   --critical: #d03b3b;
-  --radius: 12px;
+  --critical-text: #e08585;
+  --radius: 14px;
   --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: Georgia, "Times New Roman", serif;
+  --shadow: 0 10px 32px rgba(0, 0, 0, 0.38);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { background: #0a0e0b; }
+
 body {
-  background: var(--page);
+  background: radial-gradient(1100px 560px at 72% -8%, #111a13 0%, var(--page) 58%) fixed;
   color: var(--ink);
   font-family: var(--font);
   font-size: 15px;
@@ -41,81 +56,114 @@ body {
 
 .hidden { display: none !important; }
 
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* ── Top bar ─────────────────────────────────────────────────────────── */
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 20px;
   flex-wrap: wrap;
-  padding: 14px 20px;
+  padding: 12px 22px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: rgba(10, 14, 11, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-.brand { display: flex; align-items: center; gap: 10px; }
-.brand-mark { font-size: 26px; }
-.brand h1 { font-size: 18px; font-weight: 650; letter-spacing: 0.2px; }
-.tagline { font-size: 12px; color: var(--muted); }
-
-.club-picker {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: auto;
+.brand { display: flex; align-items: center; gap: 11px; }
+.brand-mark { font-size: 25px; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5)); }
+.brand h1 {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
-.club-picker label { color: var(--ink-2); font-size: 13px; }
+.tagline {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+}
+
+.club-picker { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.club-picker label {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+}
 .club-info { color: var(--muted); font-size: 12px; }
 
 select, input[type="number"] {
   background: var(--surface-2);
   color: var(--ink);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 9px;
   padding: 7px 10px;
   font-family: inherit;
   font-size: 14px;
+  transition: border-color 0.15s ease;
 }
+select:hover, input[type="number"]:hover { border-color: var(--gold-dim); }
+
+button { transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
 
 .ghost-btn {
   background: transparent;
   color: var(--ink-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 9px;
   padding: 8px 14px;
   font-family: inherit;
   font-size: 14px;
   cursor: pointer;
 }
-.ghost-btn:hover { background: var(--surface-2); color: var(--ink); }
+.ghost-btn:hover { background: var(--surface-2); color: var(--ink); border-color: var(--gold-dim); }
+.btn-small { padding: 4px 10px; font-size: 12px; border-radius: 7px; }
 
 .primary-btn {
-  background: var(--series);
-  color: #fff;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  color: var(--gold-ink);
   border: none;
-  border-radius: 8px;
-  padding: 11px 20px;
+  border-radius: 10px;
+  padding: 11px 22px;
   font-family: inherit;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 650;
   cursor: pointer;
+  box-shadow: 0 4px 16px rgba(216, 180, 106, 0.18);
 }
-.primary-btn:hover { filter: brightness(1.1); }
+.primary-btn:hover {
+  background: linear-gradient(180deg, #f0d296, var(--gold-bright));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(216, 180, 106, 0.26);
+}
+.primary-btn:active { transform: translateY(0); }
 
 /* ── Settings ───────────────────────────────────────────────────────── */
 
 .settings {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px 28px;
-  padding: 14px 20px;
+  gap: 18px 30px;
+  padding: 14px 22px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 .setting { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .setting label { color: var(--ink-2); }
-.setting input[type="range"] { width: 160px; accent-color: var(--series); }
-.setting input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--series); }
+.setting input[type="range"] { width: 160px; accent-color: var(--gold); }
+.setting input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--gold); }
 #calibrationValue { color: var(--muted); }
 
 /* ── Layout ─────────────────────────────────────────────────────────── */
@@ -123,41 +171,72 @@ select, input[type="number"] {
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
-  gap: 18px;
-  padding: 18px 20px;
+  gap: 20px;
+  padding: 20px 22px;
   align-items: start;
+  max-width: 1560px;
+  margin: 0 auto;
 }
 @media (max-width: 980px) {
   .layout { grid-template-columns: 1fr; }
 }
 
+/* ── Cards (shared) ─────────────────────────────────────────────────── */
+
+.card {
+  background: linear-gradient(180deg, #151d17 0%, var(--surface) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+.card h3 {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+}
+
 /* ── Capture column ─────────────────────────────────────────────────── */
 
 .start-overlay {
-  background: var(--surface);
+  background: linear-gradient(180deg, #151d17 0%, var(--surface) 100%);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 26px;
+  padding: 28px;
+  box-shadow: var(--shadow);
 }
-.start-overlay h2 { font-size: 17px; margin-bottom: 12px; }
-.start-overlay ol { margin: 0 0 18px 20px; color: var(--ink-2); }
-.start-overlay li { margin-bottom: 6px; }
+.start-overlay h2 {
+  font-family: var(--display);
+  font-size: 21px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  text-wrap: balance;
+}
+.start-overlay ol { margin: 0 0 20px 20px; color: var(--ink-2); }
+.start-overlay li { margin-bottom: 7px; }
 .start-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-.file-btn { display: inline-flex; align-items: center; gap: 6px; }
+.file-btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .load-status { margin-top: 12px; color: var(--warning); font-size: 13px; min-height: 1.2em; }
 .fineprint { margin-top: 12px; color: var(--muted); font-size: 12px; }
 
-.range-mode {
-  margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid var(--grid);
+.range-mode { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--grid); }
+.range-mode h3 {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
 }
-.range-mode h3 { font-size: 14px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
-.range-hint { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
-.range-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.range-hint { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.range-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .range-controls label { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
 .range-controls strong { color: var(--ink); font-variant-numeric: tabular-nums; }
-.range-controls input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--series); }
+.range-controls input[type="range"] { flex: 1; min-width: 150px; accent-color: var(--gold); }
 
 .stage {
   position: relative;
@@ -165,121 +244,248 @@ select, input[type="number"] {
   overflow: hidden;
   background: #000;
   border: 1px solid var(--border);
+  box-shadow: var(--shadow);
 }
 .stage video { display: block; width: 100%; height: auto; }
-.stage canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .stage.mirrored video, .stage.mirrored canvas { transform: scaleX(-1); }
 
 .stage-hud {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
+  top: 12px;
+  left: 12px;
+  right: 12px;
   display: flex;
   justify-content: space-between;
   pointer-events: none;
 }
 .phase-badge {
-  background: rgba(13, 13, 13, 0.75);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(10, 14, 11, 0.78);
   color: var(--ink);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 5px 14px;
   font-size: 13px;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
 }
+.phase-badge::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.phase-badge[data-phase="address"] { border-color: rgba(12, 163, 12, 0.5); color: #9fdc9f; }
+.phase-badge[data-phase="address"]::before { background: var(--good); }
 .phase-badge[data-phase="backswing"],
-.phase-badge[data-phase="downswing"] { border-color: var(--series); color: var(--series); }
-.phase-badge[data-phase="address"] { border-color: var(--good); color: #7fd97f; }
+.phase-badge[data-phase="downswing"] { border-color: var(--gold-dim); color: var(--gold-bright); }
+.phase-badge[data-phase="backswing"]::before,
+.phase-badge[data-phase="downswing"]::before { background: var(--gold); }
+@media (prefers-reduced-motion: no-preference) {
+  .phase-badge[data-phase="address"]::before,
+  .phase-badge[data-phase="backswing"]::before,
+  .phase-badge[data-phase="downswing"]::before {
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
 .live-speed {
-  background: rgba(13, 13, 13, 0.75);
+  background: rgba(10, 14, 11, 0.78);
   border-radius: 999px;
   padding: 5px 14px;
   font-size: 13px;
   color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
 }
 .live-speed:empty { display: none; }
 
-/* ── Results column ─────────────────────────────────────────────────── */
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  margin-bottom: 16px;
-}
-.card h3 { font-size: 14px; font-weight: 600; color: var(--ink-2); margin-bottom: 10px; }
+/* ── Hero card ──────────────────────────────────────────────────────── */
 
 .hero-card {
-  background: var(--surface);
+  position: relative;
+  background:
+    radial-gradient(500px 190px at 18% -30%, rgba(216, 180, 106, 0.09) 0%, transparent 65%),
+    linear-gradient(180deg, #161f18 0%, var(--surface) 100%);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px;
-  margin-bottom: 16px;
+  padding: 20px 22px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
 }
-.hero-label { font-size: 13px; color: var(--ink-2); }
-.hero-row { display: flex; align-items: baseline; gap: 8px; }
-.hero-figure { font-size: 56px; font-weight: 600; line-height: 1.1; }
-.hero-unit { font-size: 20px; color: var(--muted); }
+.hero-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold) 0%, rgba(216, 180, 106, 0.06) 78%);
+}
+.hero-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hero-label {
+  font-size: 11px;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 1.8px;
+  font-weight: 650;
+}
+.pb-badge {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  border: 1px solid var(--gold-dim);
+  background: var(--gold-faint);
+  border-radius: 999px;
+  padding: 3px 11px;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pb-badge { animation: rise 0.4s ease both; }
+}
+.hero-row { display: flex; align-items: baseline; gap: 9px; margin: 4px 0 2px; }
+.hero-figure { font-size: 66px; font-weight: 650; line-height: 1.08; letter-spacing: -1.5px; }
+.hero-unit { font-size: 22px; color: var(--muted); }
+.hero-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .hero-sub { font-size: 13px; color: var(--muted); }
+.hero-delta { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.delta-up { color: var(--good-text); }
+.delta-down { color: var(--critical-text); }
+
+/* ── Stat tiles ─────────────────────────────────────────────────────── */
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(122px, 1fr));
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 .stat {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 11px;
+  padding: 10px 13px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
-.stat-label { font-size: 11px; color: var(--muted); }
-.stat-value { font-size: 18px; font-weight: 600; }
+.stat:hover { border-color: var(--gold-dim); transform: translateY(-1px); }
+.stat-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+}
+.stat-value { font-size: 18px; font-weight: 600; margin-top: 2px; }
 
-.traj-canvas { width: 100%; height: 220px; display: block; }
+/* ── Trajectory ─────────────────────────────────────────────────────── */
 
-.score-row { display: flex; align-items: center; justify-content: space-between; }
+.traj-wrap { position: relative; }
+.traj-canvas { width: 100%; height: 230px; display: block; cursor: crosshair; }
+.traj-tip {
+  position: absolute;
+  transform: translateX(-50%);
+  background: rgba(10, 14, 11, 0.93);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 11px;
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Review / advice ────────────────────────────────────────────────── */
+
+.score-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.score-row h3 { margin-bottom: 0; }
 .score-pill {
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 4px 12px;
+  padding: 4px 13px;
   font-size: 13px;
   color: var(--ink-2);
 }
-.score-pill strong { color: var(--ink); font-size: 15px; }
+.score-pill strong { color: var(--gold-bright); font-size: 15px; }
 
-.advice-list { list-style: none; margin-top: 10px; }
-.finding {
-  border-top: 1px solid var(--grid);
-  padding: 12px 0;
-}
+.advice-list { list-style: none; margin-top: 12px; }
+.finding { border-top: 1px solid var(--grid); padding: 13px 0; }
 .finding:first-child { border-top: none; padding-top: 4px; }
 .finding-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .finding-icon { font-size: 13px; width: 18px; text-align: center; }
 .finding-sev {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.6px;
 }
 .finding-title { font-weight: 600; }
 .finding-measured { font-size: 12px; color: var(--muted); }
 .finding-detail { font-size: 13px; color: var(--ink-2); margin-top: 4px; }
-.finding-drill { font-size: 13px; color: var(--ink-2); margin-top: 6px; padding-left: 10px; border-left: 2px solid var(--series); }
+.finding-drill {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 7px;
+  padding-left: 11px;
+  border-left: 2px solid var(--gold-dim);
+}
 
 .sev-good  .finding-icon, .sev-good  .finding-sev { color: var(--good); }
 .sev-info  .finding-icon, .sev-info  .finding-sev { color: var(--warning); }
 .sev-minor .finding-icon, .sev-minor .finding-sev { color: var(--serious); }
 .sev-major .finding-icon, .sev-major .finding-sev { color: var(--critical); }
+
+/* ── Leaderboard ────────────────────────────────────────────────────── */
+
+.leaderboard-card h3 { color: var(--gold); }
+.lb-note { font-size: 12px; color: var(--warning); margin-bottom: 8px; }
+.lb-note:empty { display: none; }
+.lb-empty { font-size: 13px; color: var(--muted); }
+.lb-list { list-style: none; }
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 10px 2px;
+  border-top: 1px solid var(--grid);
+}
+.lb-row:first-child { border-top: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .lb-new { animation: lbFlash 1.8s ease both; }
+}
+@keyframes lbFlash {
+  0% { background: var(--gold-faint); }
+  100% { background: transparent; }
+}
+.lb-rank {
+  flex: none;
+  width: 27px;
+  height: 27px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.lb-medal-1 .lb-rank { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); border-color: transparent; color: var(--gold-ink); }
+.lb-medal-2 .lb-rank { background: linear-gradient(180deg, #cdd4cb, #aab3a8); border-color: transparent; color: var(--gold-ink); }
+.lb-medal-3 .lb-rank { background: linear-gradient(180deg, #c29a6b, #a67d4f); border-color: transparent; color: var(--gold-ink); }
+.lb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.lb-club { font-family: var(--display); font-size: 15.5px; }
+.lb-meta { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-carry { font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lb-medal-1 .lb-carry { color: var(--gold-bright); }
+
+/* ── History table ──────────────────────────────────────────────────── */
 
 .table-scroll { overflow-x: auto; }
 .history { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -287,6 +493,9 @@ select, input[type="number"] {
   text-align: left;
   color: var(--muted);
   font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
   padding: 6px 10px 6px 0;
   border-bottom: 1px solid var(--baseline);
 }
@@ -299,6 +508,19 @@ select, input[type="number"] {
 
 .methodology p { font-size: 13px; color: var(--muted); }
 
+/* ── Reveal motion ──────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  #results > * { animation: rise 0.45s ease both; }
+  #results > *:nth-child(2) { animation-delay: 0.05s; }
+  #results > *:nth-child(3) { animation-delay: 0.1s; }
+  #results > *:nth-child(4) { animation-delay: 0.15s; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
   </style>
 </head>
 <body>
@@ -307,7 +529,7 @@ select, input[type="number"] {
       <span class="brand-mark">⛳</span>
       <div>
         <h1>SwingLab</h1>
-        <p class="tagline">Real-time swing analysis · physics-based ball flight</p>
+        <p class="tagline">Swing analysis · calibrated flight physics</p>
       </div>
     </div>
     <div class="club-picker">
@@ -393,19 +615,28 @@ select, input[type="number"] {
     <section class="results-col">
       <div id="results" class="hidden">
         <div class="hero-card">
-          <div class="hero-label">Carry distance</div>
+          <div class="hero-top">
+            <div class="hero-label">Carry distance</div>
+            <span id="pbBadge" class="pb-badge hidden">◆ New personal best</span>
+          </div>
           <div class="hero-row">
             <span id="carryValue" class="hero-figure">–</span>
             <span id="carryUnit" class="hero-unit">yd</span>
           </div>
-          <div id="carryClub" class="hero-sub"></div>
+          <div class="hero-foot">
+            <div id="carryClub" class="hero-sub"></div>
+            <div id="carryDelta" class="hero-delta"></div>
+          </div>
         </div>
 
         <div id="statGrid" class="stat-grid"></div>
 
         <div class="card">
           <h3>Ball flight</h3>
-          <canvas id="trajCanvas" class="traj-canvas"></canvas>
+          <div class="traj-wrap">
+            <canvas id="trajCanvas" class="traj-canvas"></canvas>
+            <div id="trajTip" class="traj-tip hidden"></div>
+          </div>
         </div>
 
         <div class="card" id="reviewCard">
@@ -416,6 +647,19 @@ select, input[type="number"] {
           <ul id="adviceList" class="advice-list"></ul>
         </div>
 
+      </div>
+
+      <div class="card leaderboard-card">
+        <div class="score-row">
+          <h3>Personal leaderboard</h3>
+          <button id="lbClear" class="ghost-btn btn-small hidden">Clear</button>
+        </div>
+        <p id="lbNote" class="lb-note"></p>
+        <p id="leaderboardEmpty" class="lb-empty">Your ten longest shots will be kept here — hit one.</p>
+        <ol id="leaderboardList" class="lb-list"></ol>
+      </div>
+
+      <div id="resultsTail">
         <div id="historyWrap" class="card hidden">
           <h3>Session history</h3>
           <div class="table-scroll">
@@ -449,41 +693,59 @@ select, input[type="number"] {
 
 /* ── js/clubs.js ───────────────────────────────────────── */
 /**
- * Club database.
+ * Club database — the full bag.
  *
- * Reference launch conditions are the published TrackMan PGA Tour averages
- * (clubhead speed, smash factor, launch angle, spin rate, carry). They anchor
- * the per-club launch model: the app measures YOUR clubhead speed from the
- * camera, then scales ball speed / spin from these references.
+ * Entries with ref:'trackman' carry the published TrackMan PGA Tour average
+ * launch conditions (clubhead speed, smash factor, launch angle, spin, carry)
+ * and are the anchors the physics engine was calibrated against. Entries with
+ * ref:'est' are clubs TrackMan doesn't publish tour averages for (odd woods,
+ * hybrids, long irons, high-loft wedges); their values are interpolated from
+ * the anchored clubs by loft and length, staying monotonic through the bag.
  *
- *  - Ball speed = clubhead speed x smash factor. Smash factor is club-specific
- *    (it falls with loft because more of the impact energy goes into spin and
- *    oblique deflection; the driver value ~1.48-1.50 reflects the USGA COR
- *    limit of 0.83).
+ *  - Ball speed = clubhead speed x smash factor. Smash falls with loft
+ *    (more impact energy goes into spin and oblique deflection; the driver
+ *    value ~1.48-1.50 reflects the USGA COR limit of 0.83).
  *  - Spin scales approximately linearly with clubhead speed for a given club
  *    (spin loft is a club property; tangential impact velocity ~ CHS).
- *  - Launch angle is treated as the club's reference dynamic-launch value.
+ *  - Launch angle is the club's reference dynamic-launch value.
  *
  * Lengths are standard men's spec converted to meters.
  */
 
 const CLUBS = [
-  { id: 'driver', name: 'Driver',        loftDeg: 10.5, lengthM: 1.156, smash: 1.48, launchDeg: 10.9, spinRpm: 2686, chsRefMph: 113, carryRefYd: 275, totalRefYd: 297 },
-  { id: '3w',     name: '3 Wood',        loftDeg: 15.0, lengthM: 1.092, smash: 1.48, launchDeg:  9.2, spinRpm: 3655, chsRefMph: 107, carryRefYd: 243, totalRefYd: 262 },
-  { id: '5w',     name: '5 Wood',        loftDeg: 18.0, lengthM: 1.067, smash: 1.47, launchDeg:  9.4, spinRpm: 4350, chsRefMph: 103, carryRefYd: 230, totalRefYd: 246 },
-  { id: 'hybrid', name: 'Hybrid',        loftDeg: 19.0, lengthM: 1.029, smash: 1.46, launchDeg: 10.2, spinRpm: 4437, chsRefMph: 100, carryRefYd: 225, totalRefYd: 238 },
-  { id: '3i',     name: '3 Iron',        loftDeg: 21.0, lengthM: 0.991, smash: 1.45, launchDeg: 10.4, spinRpm: 4630, chsRefMph:  98, carryRefYd: 212, totalRefYd: 226 },
-  { id: '4i',     name: '4 Iron',        loftDeg: 24.0, lengthM: 0.978, smash: 1.43, launchDeg: 11.0, spinRpm: 4836, chsRefMph:  96, carryRefYd: 203, totalRefYd: 213 },
-  { id: '5i',     name: '5 Iron',        loftDeg: 27.0, lengthM: 0.965, smash: 1.41, launchDeg: 12.1, spinRpm: 5361, chsRefMph:  94, carryRefYd: 194, totalRefYd: 202 },
-  { id: '6i',     name: '6 Iron',        loftDeg: 30.0, lengthM: 0.953, smash: 1.38, launchDeg: 14.1, spinRpm: 6231, chsRefMph:  92, carryRefYd: 183, totalRefYd: 189 },
-  { id: '7i',     name: '7 Iron',        loftDeg: 34.0, lengthM: 0.940, smash: 1.33, launchDeg: 16.3, spinRpm: 7097, chsRefMph:  90, carryRefYd: 172, totalRefYd: 176 },
-  { id: '8i',     name: '8 Iron',        loftDeg: 38.0, lengthM: 0.927, smash: 1.32, launchDeg: 18.1, spinRpm: 7998, chsRefMph:  87, carryRefYd: 160, totalRefYd: 164 },
-  { id: '9i',     name: '9 Iron',        loftDeg: 42.0, lengthM: 0.914, smash: 1.28, launchDeg: 20.4, spinRpm: 8647, chsRefMph:  85, carryRefYd: 148, totalRefYd: 151 },
-  { id: 'pw',     name: 'Pitching Wedge',loftDeg: 46.0, lengthM: 0.908, smash: 1.23, launchDeg: 24.2, spinRpm: 9304, chsRefMph:  83, carryRefYd: 136, totalRefYd: 139 },
-  { id: 'gw',     name: 'Gap Wedge',     loftDeg: 50.0, lengthM: 0.902, smash: 1.18, launchDeg: 26.5, spinRpm: 9600, chsRefMph:  79, carryRefYd: 120, totalRefYd: 123 },
-  { id: 'sw',     name: 'Sand Wedge',    loftDeg: 54.0, lengthM: 0.895, smash: 1.12, launchDeg: 28.5, spinRpm: 10000, chsRefMph: 76, carryRefYd: 105, totalRefYd: 108 },
-  { id: 'lw',     name: 'Lob Wedge',     loftDeg: 58.0, lengthM: 0.889, smash: 1.06, launchDeg: 31.0, spinRpm: 10400, chsRefMph: 73, carryRefYd:  90, totalRefYd:  93 },
+  // ── Woods ─────────────────────────────────────────────────────────────
+  { id: 'driver', name: 'Driver',          cat: 'Woods',   loftDeg: 10.5, lengthM: 1.156, smash: 1.48, launchDeg: 10.9, spinRpm: 2686, chsRefMph: 113, carryRefYd: 275, totalRefYd: 297, ref: 'trackman' },
+  { id: '2w',     name: '2 Wood (mini)',   cat: 'Woods',   loftDeg: 13.0, lengthM: 1.105, smash: 1.48, launchDeg:  9.6, spinRpm: 3100, chsRefMph: 109, carryRefYd: 255, totalRefYd: 273, ref: 'est' },
+  { id: '3w',     name: '3 Wood',          cat: 'Woods',   loftDeg: 15.0, lengthM: 1.092, smash: 1.48, launchDeg:  9.2, spinRpm: 3655, chsRefMph: 107, carryRefYd: 243, totalRefYd: 262, ref: 'trackman' },
+  { id: '4w',     name: '4 Wood',          cat: 'Woods',   loftDeg: 16.5, lengthM: 1.080, smash: 1.47, launchDeg:  9.3, spinRpm: 4000, chsRefMph: 105, carryRefYd: 236, totalRefYd: 252, ref: 'est' },
+  { id: '5w',     name: '5 Wood',          cat: 'Woods',   loftDeg: 18.0, lengthM: 1.067, smash: 1.47, launchDeg:  9.4, spinRpm: 4350, chsRefMph: 103, carryRefYd: 230, totalRefYd: 246, ref: 'trackman' },
+  { id: '7w',     name: '7 Wood',          cat: 'Woods',   loftDeg: 21.0, lengthM: 1.054, smash: 1.44, launchDeg: 10.4, spinRpm: 4900, chsRefMph: 101, carryRefYd: 214, totalRefYd: 224, ref: 'est' },
+  { id: '9w',     name: '9 Wood',          cat: 'Woods',   loftDeg: 24.0, lengthM: 1.041, smash: 1.41, launchDeg: 11.4, spinRpm: 5500, chsRefMph:  99, carryRefYd: 200, totalRefYd: 208, ref: 'est' },
+  // ── Hybrids ───────────────────────────────────────────────────────────
+  { id: '2h',     name: '2 Hybrid',        cat: 'Hybrids', loftDeg: 17.0, lengthM: 1.041, smash: 1.46, launchDeg:  9.7, spinRpm: 4100, chsRefMph: 101, carryRefYd: 219, totalRefYd: 233, ref: 'est' },
+  { id: '3h',     name: '3 Hybrid',        cat: 'Hybrids', loftDeg: 19.0, lengthM: 1.029, smash: 1.46, launchDeg: 10.2, spinRpm: 4437, chsRefMph: 100, carryRefYd: 225, totalRefYd: 238, ref: 'trackman' },
+  { id: '4h',     name: '4 Hybrid',        cat: 'Hybrids', loftDeg: 22.0, lengthM: 1.016, smash: 1.44, launchDeg: 11.0, spinRpm: 4900, chsRefMph:  98, carryRefYd: 203, totalRefYd: 212, ref: 'est' },
+  { id: '5h',     name: '5 Hybrid',        cat: 'Hybrids', loftDeg: 25.0, lengthM: 1.003, smash: 1.42, launchDeg: 12.0, spinRpm: 5400, chsRefMph:  96, carryRefYd: 192, totalRefYd: 199, ref: 'est' },
+  // ── Irons ─────────────────────────────────────────────────────────────
+  { id: '1i',     name: '1 Iron',          cat: 'Irons',   loftDeg: 16.0, lengthM: 1.016, smash: 1.47, launchDeg:  9.0, spinRpm: 3900, chsRefMph: 100, carryRefYd: 219, totalRefYd: 235, ref: 'est' },
+  { id: '2i',     name: '2 Iron',          cat: 'Irons',   loftDeg: 18.0, lengthM: 1.003, smash: 1.46, launchDeg:  9.8, spinRpm: 4250, chsRefMph:  99, carryRefYd: 214, totalRefYd: 228, ref: 'est' },
+  { id: '3i',     name: '3 Iron',          cat: 'Irons',   loftDeg: 21.0, lengthM: 0.991, smash: 1.45, launchDeg: 10.4, spinRpm: 4630, chsRefMph:  98, carryRefYd: 212, totalRefYd: 226, ref: 'trackman' },
+  { id: '4i',     name: '4 Iron',          cat: 'Irons',   loftDeg: 24.0, lengthM: 0.978, smash: 1.43, launchDeg: 11.0, spinRpm: 4836, chsRefMph:  96, carryRefYd: 203, totalRefYd: 213, ref: 'trackman' },
+  { id: '5i',     name: '5 Iron',          cat: 'Irons',   loftDeg: 27.0, lengthM: 0.965, smash: 1.41, launchDeg: 12.1, spinRpm: 5361, chsRefMph:  94, carryRefYd: 194, totalRefYd: 202, ref: 'trackman' },
+  { id: '6i',     name: '6 Iron',          cat: 'Irons',   loftDeg: 30.0, lengthM: 0.953, smash: 1.38, launchDeg: 14.1, spinRpm: 6231, chsRefMph:  92, carryRefYd: 183, totalRefYd: 189, ref: 'trackman' },
+  { id: '7i',     name: '7 Iron',          cat: 'Irons',   loftDeg: 34.0, lengthM: 0.940, smash: 1.33, launchDeg: 16.3, spinRpm: 7097, chsRefMph:  90, carryRefYd: 172, totalRefYd: 176, ref: 'trackman' },
+  { id: '8i',     name: '8 Iron',          cat: 'Irons',   loftDeg: 38.0, lengthM: 0.927, smash: 1.32, launchDeg: 18.1, spinRpm: 7998, chsRefMph:  87, carryRefYd: 160, totalRefYd: 164, ref: 'trackman' },
+  { id: '9i',     name: '9 Iron',          cat: 'Irons',   loftDeg: 42.0, lengthM: 0.914, smash: 1.28, launchDeg: 20.4, spinRpm: 8647, chsRefMph:  85, carryRefYd: 148, totalRefYd: 151, ref: 'trackman' },
+  // ── Wedges ────────────────────────────────────────────────────────────
+  { id: 'pw',     name: 'Pitching Wedge',  cat: 'Wedges',  loftDeg: 46.0, lengthM: 0.908, smash: 1.23, launchDeg: 24.2, spinRpm: 9304, chsRefMph:  83, carryRefYd: 136, totalRefYd: 139, ref: 'trackman' },
+  { id: 'gw',     name: 'Gap Wedge 50°',   cat: 'Wedges',  loftDeg: 50.0, lengthM: 0.902, smash: 1.18, launchDeg: 26.5, spinRpm: 9600, chsRefMph:  79, carryRefYd: 120, totalRefYd: 123, ref: 'est' },
+  { id: 'sw',     name: 'Sand Wedge 54°',  cat: 'Wedges',  loftDeg: 54.0, lengthM: 0.895, smash: 1.12, launchDeg: 28.5, spinRpm: 10000, chsRefMph: 76, carryRefYd: 105, totalRefYd: 108, ref: 'est' },
+  { id: 'lw',     name: 'Lob Wedge 58°',   cat: 'Wedges',  loftDeg: 58.0, lengthM: 0.889, smash: 1.06, launchDeg: 31.0, spinRpm: 10400, chsRefMph: 73, carryRefYd:  90, totalRefYd:  93, ref: 'est' },
+  { id: '60w',    name: 'Lob Wedge 60°',   cat: 'Wedges',  loftDeg: 60.0, lengthM: 0.889, smash: 1.03, launchDeg: 32.5, spinRpm: 10500, chsRefMph: 71, carryRefYd:  80, totalRefYd:  82, ref: 'est' },
+  { id: '64w',    name: 'High Lob 64°',    cat: 'Wedges',  loftDeg: 64.0, lengthM: 0.883, smash: 0.98, launchDeg: 34.5, spinRpm: 10700, chsRefMph: 69, carryRefYd:  68, totalRefYd:  70, ref: 'est' },
 ];
+
+const CLUB_CATEGORIES = ['Woods', 'Hybrids', 'Irons', 'Wedges'];
 
 function getClub(id) {
   return CLUBS.find((c) => c.id === id) || CLUBS[0];
@@ -693,6 +955,73 @@ function simulateFlight({ ballSpeedMps, launchDeg, spinRpm, rho = airDensity() }
 
 const M_TO_YD = 1.09361;
 const MPS_TO_MPH = 2.23694;
+
+/* ── js/storage.js ───────────────────────────────────────── */
+/**
+ * Persistence — settings and the personal leaderboard survive restarts.
+ *
+ * localStorage when the environment allows it (normal browsers, file://),
+ * with a transparent in-memory fallback for sandboxes that block storage
+ * (some embedded iframes throw SecurityError on any localStorage access).
+ */
+
+const KEY = 'swinglab.v1';
+
+let store = null;
+try {
+  const probe = '__swinglab_probe__';
+  window.localStorage.setItem(probe, '1');
+  window.localStorage.removeItem(probe);
+  store = window.localStorage;
+} catch {
+  store = null;
+}
+
+/** True when data will actually survive a page reload. */
+const persistent = store !== null;
+
+const memory = { data: null };
+
+function loadData() {
+  if (store) {
+    try {
+      return JSON.parse(store.getItem(KEY)) ?? {};
+    } catch {
+      return {};
+    }
+  }
+  return memory.data ?? {};
+}
+
+function saveData(data) {
+  memory.data = data;
+  if (store) {
+    try {
+      store.setItem(KEY, JSON.stringify(data));
+    } catch {
+      // Quota or transient failure — memory copy still serves this session.
+    }
+  }
+}
+
+const LEADERBOARD_MAX = 10;
+
+/**
+ * Insert a shot into the leaderboard, keeping the longest carries first.
+ * Returns a new array (never mutates).
+ */
+function updateLeaderboard(list, entry) {
+  return [...list, entry]
+    .sort((a, b) => b.carryM - a.carryM || b.totalM - a.totalM)
+    .slice(0, LEADERBOARD_MAX);
+}
+
+/** Longest carry on record for one club (0 if none). */
+function bestForClub(list, clubId) {
+  let best = 0;
+  for (const e of list) if (e.clubId === clubId && e.carryM > best) best = e.carryM;
+  return best;
+}
 
 /* ── js/swing.js ───────────────────────────────────────── */
 /**
@@ -1381,32 +1710,49 @@ function evaluateSwing(m) {
 
 /* ── js/trajectory.js ───────────────────────────────────────── */
 /**
- * Side-view ball-flight chart on <canvas>, with an animated replay.
- * Styling follows the app's chart tokens (see style.css :root).
+ * Side-view ball-flight chart on <canvas>: animated replay, hover crosshair
+ * with tooltip, and a gold personal-best marker for the selected club.
+ * Colors stay in sync with the tokens in css/style.css.
  */
 
 
 
 const COLORS = {
-  surface: '#1a1a19',
-  grid: '#2c2c2a',
-  baseline: '#383835',
-  muted: '#898781',
-  ink: '#ffffff',
-  inkSecondary: '#c3c2b7',
+  surface: '#131a14',
+  ground: 'rgba(63, 92, 62, 0.14)',
+  grid: '#233024',
+  baseline: '#3a4a3c',
+  muted: '#83917f',
+  ink: '#f2f5ef',
+  inkSecondary: '#c3cdbf',
   series: '#3987e5',
   seriesWash: 'rgba(57, 135, 229, 0.10)',
+  gold: '#d8b46a',
+  goldSoft: 'rgba(216, 180, 106, 0.55)',
 };
 
+const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+
 class TrajectoryView {
-  constructor(canvas) {
+  /**
+   * @param {HTMLCanvasElement} canvas
+   * @param {HTMLElement} [tipEl] absolutely-positioned tooltip element
+   */
+  constructor(canvas, tipEl = null) {
     this.canvas = canvas;
+    this.tip = tipEl;
     this.ctx = canvas.getContext('2d');
     this.flight = null;
     this.units = 'yd';
+    this.pbCarryM = 0;      // personal best for the selected club (0 = none)
     this.animStart = 0;
     this.raf = null;
+    this.done = false;
+    this.hover = null;
     this.resize();
+
+    canvas.addEventListener('pointermove', (ev) => this.onPointer(ev));
+    canvas.addEventListener('pointerleave', () => this.clearHover());
   }
 
   resize() {
@@ -1418,26 +1764,44 @@ class TrajectoryView {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.w = rect.width;
     this.h = rect.height;
-    this.draw(this.flight ? 1 : 0);
+    // Only render the completed flight if the replay has finished — show()
+    // calls resize() right before animating, and drawing the final frame
+    // here would flash the full path for one frame.
+    this.draw(this.flight && this.done ? 1 : 0);
   }
 
   setUnits(units) {
     this.units = units;
-    this.draw(this.flight ? 1 : 0);
+    this.draw(this.flight && this.done ? 1 : 0);
+  }
+
+  /** Personal-best carry (m) to mark on the ground line; 0 hides the marker. */
+  setPB(carryM) {
+    this.pbCarryM = carryM || 0;
   }
 
   show(flight) {
     this.flight = flight;
+    this.done = false;
+    this.hover = null;
+    if (this.tip) this.tip.classList.add('hidden');
     // The canvas may have been display:none (zero-width) when constructed —
     // re-measure now that the results panel is visible.
     this.resize();
     if (this.raf) cancelAnimationFrame(this.raf);
     this.animStart = performance.now();
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      this.done = true;
+      this.draw(1);
+      return;
+    }
     const animate = (now) => {
       // Replay at 2x real time.
       const progress = Math.min(1, ((now - this.animStart) / 1000) * 2 / flight.flightTimeS);
       this.draw(progress);
       if (progress < 1) this.raf = requestAnimationFrame(animate);
+      else this.done = true;
     };
     this.raf = requestAnimationFrame(animate);
   }
@@ -1445,6 +1809,38 @@ class TrajectoryView {
   toUnit(m) {
     return this.units === 'yd' ? m * M_TO_YD : m;
   }
+
+  onPointer(ev) {
+    if (!this.flight || !this.done || !this.layout) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const px = ev.clientX - rect.left;
+    const meters = (px - this.layout.padL) / this.layout.sx;
+    const pts = this.flight.points;
+    let best = pts[0];
+    for (const p of pts) if (Math.abs(p.x - meters) < Math.abs(best.x - meters)) best = p;
+    this.hover = best;
+    this.draw(1);
+    if (this.tip) {
+      const u = this.units;
+      this.tip.textContent =
+        `${this.toUnit(best.x).toFixed(0)} ${u} out · ` +
+        `${this.toUnit(best.y).toFixed(0)} ${u} high · ${best.t.toFixed(1)} s`;
+      this.tip.classList.remove('hidden');
+      const tx = this.layout.padL + best.x * this.layout.sx;
+      const clampedX = Math.min(Math.max(tx, 70), this.w - 80);
+      this.tip.style.left = `${clampedX}px`;
+      this.tip.style.top = `${this.Y(best.y) - 34}px`;
+    }
+  }
+
+  clearHover() {
+    this.hover = null;
+    if (this.tip) this.tip.classList.add('hidden');
+    if (this.flight && this.done) this.draw(1);
+  }
+
+  X(m) { return this.layout.padL + m * this.layout.sx; }
+  Y(m) { return this.layout.padT + this.layout.plotH - m * this.layout.sy; }
 
   draw(progress = 0) {
     const { ctx, w, h } = this;
@@ -1455,23 +1851,29 @@ class TrajectoryView {
     const plotW = w - padL - padR;
     const plotH = h - padT - padB;
 
-    // Scale: keep x/y proportional-ish but prioritize fitting the carry.
-    const maxX = this.flight ? Math.max(50, this.flight.totalM * 1.06) : 250;
+    const reach = this.flight
+      ? Math.max(50, Math.max(this.flight.totalM, this.pbCarryM) * 1.06)
+      : 250;
     const maxY = this.flight ? Math.max(20, this.flight.apexM * 1.8) : 60;
-    const sx = plotW / maxX;
+    const sx = plotW / reach;
     const sy = plotH / maxY;
-    const X = (m) => padL + m * sx;
-    const Y = (m) => padT + plotH - m * sy;
+    this.layout = { padL, padT, plotH, sx, sy };
+    const X = (m) => this.X(m);
+    const Y = (m) => this.Y(m);
+
+    // Turf wash under the ground line.
+    ctx.fillStyle = COLORS.ground;
+    ctx.fillRect(padL, Y(0), plotW, h - padB - Y(0) + 6);
 
     // Distance gridlines (hairline, recessive) every 50 yd / m.
     const unitPerM = this.units === 'yd' ? M_TO_YD : 1;
-    const stepU = maxX * unitPerM > 320 ? 100 : 50;
+    const stepU = reach * unitPerM > 320 ? 100 : 50;
     ctx.strokeStyle = COLORS.grid;
     ctx.lineWidth = 1;
     ctx.fillStyle = COLORS.muted;
-    ctx.font = '11px system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.font = `11px ${FONT}`;
     ctx.textAlign = 'center';
-    for (let u = stepU; u <= maxX * unitPerM; u += stepU) {
+    for (let u = stepU; u <= reach * unitPerM; u += stepU) {
       const xPix = X(u / unitPerM);
       ctx.beginPath();
       ctx.moveTo(xPix, padT);
@@ -1489,10 +1891,34 @@ class TrajectoryView {
     ctx.lineTo(w - padR, Y(0) + 0.5);
     ctx.stroke();
 
+    // Personal-best marker (gold flag on the ground line).
+    if (this.pbCarryM > 1) {
+      const px = X(this.pbCarryM);
+      ctx.strokeStyle = COLORS.goldSoft;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(px, Y(0));
+      ctx.lineTo(px, Y(0) - 26);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.gold;
+      ctx.beginPath();
+      ctx.moveTo(px, Y(0) - 26);
+      ctx.lineTo(px + 9, Y(0) - 21.5);
+      ctx.lineTo(px, Y(0) - 17);
+      ctx.closePath();
+      ctx.fill();
+      ctx.font = `10px ${FONT}`;
+      ctx.fillStyle = COLORS.goldSoft;
+      ctx.textAlign = 'center';
+      ctx.fillText(`best ${this.toUnit(this.pbCarryM).toFixed(0)}`, px, Y(0) - 32);
+      ctx.textAlign = 'left';
+    }
+
     if (!this.flight) {
       ctx.fillStyle = COLORS.muted;
+      ctx.font = `12px ${FONT}`;
       ctx.textAlign = 'center';
-      ctx.fillText('Swing to see your ball flight', w / 2, h / 2);
+      ctx.fillText('Your ball flight will trace here', w / 2, h / 2);
       ctx.textAlign = 'left';
       return;
     }
@@ -1531,7 +1957,7 @@ class TrajectoryView {
     ctx.fill();
 
     if (progress >= 1) {
-      // Roll segment (secondary treatment — muted, thinner).
+      // Roll segment (secondary treatment — muted, on the ground).
       if (this.flight.rollM > 0.5) {
         ctx.beginPath();
         ctx.moveTo(X(this.flight.carryM), Y(0));
@@ -1552,6 +1978,7 @@ class TrajectoryView {
       ctx.fillStyle = COLORS.series;
       ctx.fill();
       ctx.fillStyle = COLORS.inkSecondary;
+      ctx.font = `11px ${FONT}`;
       ctx.textAlign = 'center';
       ctx.fillText(
         `apex ${this.toUnit(this.flight.apexM).toFixed(0)} ${this.units}`,
@@ -1561,10 +1988,29 @@ class TrajectoryView {
 
       // Carry label at the landing point.
       ctx.fillStyle = COLORS.ink;
-      ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", sans-serif';
+      ctx.font = `600 12px ${FONT}`;
       const carryX = Math.min(X(this.flight.carryM), w - padR - 30);
       ctx.fillText(`${this.toUnit(this.flight.carryM).toFixed(0)} ${this.units}`, carryX, Y(0) - 8);
       ctx.textAlign = 'left';
+
+      // Hover crosshair.
+      if (this.hover) {
+        const hx = X(this.hover.x), hy = Y(this.hover.y);
+        ctx.strokeStyle = COLORS.baseline;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(hx + 0.5, padT);
+        ctx.lineTo(hx + 0.5, padT + plotH);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(hx, hy, 7, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.surface;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(hx, hy, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.series;
+        ctx.fill();
+      }
     }
   }
 }
@@ -1576,6 +2022,7 @@ class TrajectoryView {
  * Camera → MediaPipe PoseLandmarker (VIDEO mode, GPU) → SwingAnalyzer →
  * club model → ball-flight physics → results UI.
  */
+
 
 
 
@@ -1606,6 +2053,8 @@ const state = {
   lastVideoTime: -1,
   swingCount: 0,
   history: [],
+  leaderboard: [],
+  lastEntryT: 0,
 };
 
 // Skeleton connections we draw (torso + arms + legs).
@@ -1673,20 +2122,86 @@ async function loadModel() {
 
 function buildClubSelect() {
   const sel = $('#clubSelect');
-  for (const c of CLUBS) {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = c.name;
-    sel.appendChild(opt);
+  for (const cat of CLUB_CATEGORIES) {
+    const group = document.createElement('optgroup');
+    group.label = cat;
+    for (const c of CLUBS.filter((x) => x.cat === cat)) {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = `${c.name} · ${c.loftDeg}°`;
+      group.appendChild(opt);
+    }
+    sel.appendChild(group);
   }
   sel.value = 'driver';
-  sel.addEventListener('change', updateClubInfo);
+  sel.addEventListener('change', () => {
+    updateClubInfo();
+    saveSettings();
+  });
   updateClubInfo();
 }
 
 function updateClubInfo() {
   const c = getClub($('#clubSelect').value);
   $('#clubInfo').textContent = `${c.loftDeg}° loft · ${(c.lengthM * 39.37).toFixed(1)}" · smash ${c.smash}`;
+}
+
+// ── Persistence ──────────────────────────────────────────────────────────
+
+function saveSettings() {
+  saveData({
+    settings: {
+      units: state.units,
+      handedness: $('#handedness').value,
+      calibration: $('#calibration').value,
+      temperature: $('#temperature').value,
+      altitude: $('#altitude').value,
+      mirror: $('#mirrorToggle').checked,
+      club: $('#clubSelect').value,
+      rangeSpeed: $('#rangeSpeed').value,
+    },
+    leaderboard: state.leaderboard,
+  });
+}
+
+function restoreSaved() {
+  const data = loadData();
+  state.leaderboard = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+  const s = data.settings;
+  if (s) {
+    if (s.units === 'm') { state.units = 'm'; $('#unitToggle').checked = true; }
+    if (s.handedness) $('#handedness').value = s.handedness;
+    if (s.calibration) {
+      $('#calibration').value = s.calibration;
+      $('#calibrationValue').textContent = `${Math.round(parseFloat(s.calibration) * 100)}%`;
+    }
+    if (s.temperature) $('#temperature').value = s.temperature;
+    if (s.altitude) $('#altitude').value = s.altitude;
+    if (s.mirror) { $('#mirrorToggle').checked = true; $('#stage').classList.add('mirrored'); }
+    if (s.club && CLUBS.some((c) => c.id === s.club)) $('#clubSelect').value = s.club;
+    if (s.rangeSpeed) $('#rangeSpeed').value = s.rangeSpeed;
+    updateClubInfo();
+  }
+}
+
+/** Record a completed shot on the personal leaderboard. */
+function recordShot({ club, chsMps, flight, review, source }) {
+  const prevPB = bestForClub(state.leaderboard, club.id);
+  const entry = {
+    t: Date.now(),
+    clubId: club.id,
+    clubName: club.name,
+    chsMps,
+    carryM: flight.carryM,
+    totalM: flight.totalM,
+    score: review ? review.score : null,
+    source,
+  };
+  state.lastEntryT = entry.t;
+  state.leaderboard = updateLeaderboard(state.leaderboard, entry);
+  saveSettings();
+  renderLeaderboard();
+  return { isPB: flight.carryM > prevPB, prevPB };
 }
 
 function makeAnalyzer() {
@@ -1874,10 +2389,11 @@ function simulateRangeShot() {
   const chsMps = parseFloat($('#rangeSpeed').value) * MPH_TO_MPS;
   const launch = launchConditions(club, chsMps);
   const flight = simulateFlight({ ...launch, rho: currentAirDensity() });
+  const pb = recordShot({ club, chsMps, flight, review: null, source: 'range' });
 
   state.swingCount += 1;
   state.history.unshift({
-    n: state.swingCount, club, chsMps, launch, flight, metrics: null, review: null,
+    n: state.swingCount, club, chsMps, launch, flight, metrics: null, review: null, pb,
   });
   if (state.history.length > 20) state.history.pop();
   renderResults(state.history[0]);
@@ -1889,24 +2405,60 @@ function onSwingComplete(metrics) {
   const launch = launchConditions(club, chsMps);
   const flight = simulateFlight({ ...launch, rho: currentAirDensity() });
   const review = evaluateSwing(metrics);
+  const pb = recordShot({ club, chsMps, flight, review, source: 'swing' });
 
   state.swingCount += 1;
-  state.history.unshift({ n: state.swingCount, club, chsMps, launch, flight, metrics, review });
+  state.history.unshift({ n: state.swingCount, club, chsMps, launch, flight, metrics, review, pb });
   if (state.history.length > 20) state.history.pop();
 
   renderResults(state.history[0]);
   if (navigator.vibrate) navigator.vibrate(60);
 }
 
-function renderResults(swing) {
+/** Ease-out count-up for the hero figure. */
+function animateNumber(el, to) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.textContent = to.toFixed(0);
+    return;
+  }
+  const from = parseFloat(el.textContent) || 0;
+  const t0 = performance.now();
+  const dur = 650;
+  const tick = (now) => {
+    const u = Math.min(1, (now - t0) / dur);
+    const e = 1 - Math.pow(1 - u, 3);
+    el.textContent = (from + (to - from) * e).toFixed(0);
+    if (u < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function renderResults(swing, { animate = true } = {}) {
   const { club, chsMps, launch, flight, metrics, review } = swing;
   $('#results').classList.remove('hidden');
 
-  // Hero: carry distance.
-  $('#carryValue').textContent = toDistUnit(flight.carryM).toFixed(0);
+  // Hero: carry distance, with count-up, PB badge, and delta vs last shot.
+  if (animate) animateNumber($('#carryValue'), toDistUnit(flight.carryM));
+  else $('#carryValue').textContent = toDistUnit(flight.carryM).toFixed(0);
   $('#carryUnit').textContent = distUnitLabel();
   $('#carryClub').textContent =
     `${club.name} · ${metrics ? `swing #${swing.n}` : `range shot #${swing.n}`}`;
+
+  $('#pbBadge').classList.toggle('hidden', !(swing.pb && swing.pb.isPB && swing.pb.prevPB > 0));
+
+  const deltaEl = $('#carryDelta');
+  // Compare against the previous shot with the SAME club — cross-club
+  // deltas (driver vs wedge) would be meaningless.
+  const prev = state.history.find((s) => s !== swing && s.club.id === club.id);
+  if (prev) {
+    const d = toDistUnit(flight.carryM - prev.flight.carryM);
+    deltaEl.textContent =
+      `${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(0)} ${distUnitLabel()} vs last ${club.name}`;
+    deltaEl.className = 'hero-delta ' + (d >= 0 ? 'delta-up' : 'delta-down');
+  } else {
+    deltaEl.textContent = '';
+    deltaEl.className = 'hero-delta';
+  }
 
   const tiles = [
     ['Clubhead speed', `${toSpeedUnit(chsMps).toFixed(0)} ${speedUnitLabel()}`],
@@ -1937,7 +2489,8 @@ function renderResults(swing) {
     grid.appendChild(tile);
   }
 
-  // Trajectory replay.
+  // Trajectory replay, with the personal-best flag for this club.
+  state.trajectory.setPB(bestForClub(state.leaderboard, club.id));
   state.trajectory.show(flight);
 
   // Swing score + advice (camera swings only — a range shot has no form data).
@@ -1998,11 +2551,39 @@ function renderHistory() {
   $('#historyWrap').classList.toggle('hidden', state.history.length === 0);
 }
 
+function renderLeaderboard() {
+  const list = $('#leaderboardList');
+  list.innerHTML = '';
+  $('#leaderboardEmpty').classList.toggle('hidden', state.leaderboard.length > 0);
+  $('#lbClear').classList.toggle('hidden', state.leaderboard.length === 0);
+
+  state.leaderboard.forEach((e, i) => {
+    const li = document.createElement('li');
+    li.className =
+      'lb-row' + (i < 3 ? ` lb-medal-${i + 1}` : '') + (e.t === state.lastEntryT ? ' lb-new' : '');
+    li.innerHTML = `
+      <span class="lb-rank"></span>
+      <span class="lb-main"><span class="lb-club"></span><span class="lb-meta"></span></span>
+      <span class="lb-carry"></span>`;
+    li.querySelector('.lb-rank').textContent = i + 1;
+    li.querySelector('.lb-club').textContent = e.clubName;
+    const date = new Date(e.t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    li.querySelector('.lb-meta').textContent =
+      `${toSpeedUnit(e.chsMps).toFixed(0)} ${speedUnitLabel()} · ` +
+      `total ${toDistUnit(e.totalM).toFixed(0)} ${distUnitLabel()} · ` +
+      (e.score != null ? `score ${e.score}` : 'range shot') + ` · ${date}`;
+    li.querySelector('.lb-carry').textContent =
+      `${toDistUnit(e.carryM).toFixed(0)} ${distUnitLabel()}`;
+    list.appendChild(li);
+  });
+}
+
 // ── Wire-up ──────────────────────────────────────────────────────────────
 
 async function init() {
   buildClubSelect();
-  state.trajectory = new TrajectoryView($('#trajCanvas'));
+  restoreSaved();
+  state.trajectory = new TrajectoryView($('#trajCanvas'), $('#trajTip'));
   window.addEventListener('resize', () => state.trajectory.resize());
 
   const MODEL_BLOCKED_MSG =
@@ -2038,6 +2619,7 @@ async function init() {
       `${toSpeedUnit(mph * MPH_TO_MPS).toFixed(0)} ${speedUnitLabel()}`;
   };
   $('#rangeSpeed').addEventListener('input', refreshRangeLabel);
+  $('#rangeSpeed').addEventListener('change', saveSettings);
   $('#rangeSimulate').addEventListener('click', simulateRangeShot);
   refreshRangeLabel();
 
@@ -2045,23 +2627,60 @@ async function init() {
     state.units = ev.target.checked ? 'm' : 'yd';
     state.trajectory.setUnits(state.units);
     refreshRangeLabel();
-    if (state.history.length) renderResults(state.history[0]);
+    renderLeaderboard();
+    if (state.history.length) renderResults(state.history[0], { animate: false });
+    saveSettings();
   });
 
   $('#mirrorToggle').addEventListener('change', (ev) => {
     $('#stage').classList.toggle('mirrored', ev.target.checked);
+    saveSettings();
   });
 
   for (const id of ['handedness', 'calibration']) {
-    $('#' + id).addEventListener('change', () => makeAnalyzer());
+    $('#' + id).addEventListener('change', () => {
+      makeAnalyzer();
+      saveSettings();
+    });
   }
   $('#calibration').addEventListener('input', () => {
     $('#calibrationValue').textContent = `${Math.round(parseFloat($('#calibration').value) * 100)}%`;
   });
+  for (const id of ['temperature', 'altitude']) {
+    $('#' + id).addEventListener('change', saveSettings);
+  }
 
   $('#settingsToggle').addEventListener('click', () => {
     $('#settingsPanel').classList.toggle('hidden');
   });
+
+  // Leaderboard: two-step clear so one stray tap can't wipe history.
+  let clearArmed = null;
+  $('#lbClear').addEventListener('click', () => {
+    const btn = $('#lbClear');
+    if (clearArmed === null) {
+      btn.textContent = 'Really clear?';
+      clearArmed = setTimeout(() => {
+        clearArmed = null;
+        btn.textContent = 'Clear';
+      }, 2500);
+      return;
+    }
+    clearTimeout(clearArmed);
+    clearArmed = null;
+    btn.textContent = 'Clear';
+    state.leaderboard = [];
+    state.lastEntryT = 0;
+    saveSettings();
+    renderLeaderboard();
+  });
+
+  if (!persistent) {
+    $('#lbNote').textContent =
+      'This environment blocks browser storage, so the leaderboard lasts for this visit only. ' +
+      'Open the app locally to keep it forever.';
+  }
+  renderLeaderboard();
 }
 
 init();

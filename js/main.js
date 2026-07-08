@@ -5,11 +5,12 @@
  * club model → ball-flight physics → results UI.
  */
 
-import { CLUBS, getClub, launchConditions, MPH_TO_MPS } from './clubs.js';
+import { CLUBS, CLUB_CATEGORIES, getClub, launchConditions, MPH_TO_MPS } from './clubs.js';
 import { simulateFlight, airDensity, M_TO_YD, MPS_TO_MPH } from './physics.js';
 import { SwingAnalyzer, PHASE, LM } from './swing.js';
 import { evaluateSwing } from './advice.js';
 import { TrajectoryView } from './trajectory.js';
+import { loadData, saveData, updateLeaderboard, bestForClub, persistent } from './storage.js';
 
 const MEDIAPIPE_VERSION = '0.10.14';
 // CDN fallback chain. The explicit vision_bundle.mjs path matters: the
@@ -34,6 +35,8 @@ const state = {
   lastVideoTime: -1,
   swingCount: 0,
   history: [],
+  leaderboard: [],
+  lastEntryT: 0,
 };
 
 // Skeleton connections we draw (torso + arms + legs).
@@ -101,20 +104,86 @@ async function loadModel() {
 
 function buildClubSelect() {
   const sel = $('#clubSelect');
-  for (const c of CLUBS) {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = c.name;
-    sel.appendChild(opt);
+  for (const cat of CLUB_CATEGORIES) {
+    const group = document.createElement('optgroup');
+    group.label = cat;
+    for (const c of CLUBS.filter((x) => x.cat === cat)) {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = `${c.name} · ${c.loftDeg}°`;
+      group.appendChild(opt);
+    }
+    sel.appendChild(group);
   }
   sel.value = 'driver';
-  sel.addEventListener('change', updateClubInfo);
+  sel.addEventListener('change', () => {
+    updateClubInfo();
+    saveSettings();
+  });
   updateClubInfo();
 }
 
 function updateClubInfo() {
   const c = getClub($('#clubSelect').value);
   $('#clubInfo').textContent = `${c.loftDeg}° loft · ${(c.lengthM * 39.37).toFixed(1)}" · smash ${c.smash}`;
+}
+
+// ── Persistence ──────────────────────────────────────────────────────────
+
+function saveSettings() {
+  saveData({
+    settings: {
+      units: state.units,
+      handedness: $('#handedness').value,
+      calibration: $('#calibration').value,
+      temperature: $('#temperature').value,
+      altitude: $('#altitude').value,
+      mirror: $('#mirrorToggle').checked,
+      club: $('#clubSelect').value,
+      rangeSpeed: $('#rangeSpeed').value,
+    },
+    leaderboard: state.leaderboard,
+  });
+}
+
+function restoreSaved() {
+  const data = loadData();
+  state.leaderboard = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+  const s = data.settings;
+  if (s) {
+    if (s.units === 'm') { state.units = 'm'; $('#unitToggle').checked = true; }
+    if (s.handedness) $('#handedness').value = s.handedness;
+    if (s.calibration) {
+      $('#calibration').value = s.calibration;
+      $('#calibrationValue').textContent = `${Math.round(parseFloat(s.calibration) * 100)}%`;
+    }
+    if (s.temperature) $('#temperature').value = s.temperature;
+    if (s.altitude) $('#altitude').value = s.altitude;
+    if (s.mirror) { $('#mirrorToggle').checked = true; $('#stage').classList.add('mirrored'); }
+    if (s.club && CLUBS.some((c) => c.id === s.club)) $('#clubSelect').value = s.club;
+    if (s.rangeSpeed) $('#rangeSpeed').value = s.rangeSpeed;
+    updateClubInfo();
+  }
+}
+
+/** Record a completed shot on the personal leaderboard. */
+function recordShot({ club, chsMps, flight, review, source }) {
+  const prevPB = bestForClub(state.leaderboard, club.id);
+  const entry = {
+    t: Date.now(),
+    clubId: club.id,
+    clubName: club.name,
+    chsMps,
+    carryM: flight.carryM,
+    totalM: flight.totalM,
+    score: review ? review.score : null,
+    source,
+  };
+  state.lastEntryT = entry.t;
+  state.leaderboard = updateLeaderboard(state.leaderboard, entry);
+  saveSettings();
+  renderLeaderboard();
+  return { isPB: flight.carryM > prevPB, prevPB };
 }
 
 function makeAnalyzer() {
@@ -302,10 +371,11 @@ function simulateRangeShot() {
   const chsMps = parseFloat($('#rangeSpeed').value) * MPH_TO_MPS;
   const launch = launchConditions(club, chsMps);
   const flight = simulateFlight({ ...launch, rho: currentAirDensity() });
+  const pb = recordShot({ club, chsMps, flight, review: null, source: 'range' });
 
   state.swingCount += 1;
   state.history.unshift({
-    n: state.swingCount, club, chsMps, launch, flight, metrics: null, review: null,
+    n: state.swingCount, club, chsMps, launch, flight, metrics: null, review: null, pb,
   });
   if (state.history.length > 20) state.history.pop();
   renderResults(state.history[0]);
@@ -317,24 +387,60 @@ function onSwingComplete(metrics) {
   const launch = launchConditions(club, chsMps);
   const flight = simulateFlight({ ...launch, rho: currentAirDensity() });
   const review = evaluateSwing(metrics);
+  const pb = recordShot({ club, chsMps, flight, review, source: 'swing' });
 
   state.swingCount += 1;
-  state.history.unshift({ n: state.swingCount, club, chsMps, launch, flight, metrics, review });
+  state.history.unshift({ n: state.swingCount, club, chsMps, launch, flight, metrics, review, pb });
   if (state.history.length > 20) state.history.pop();
 
   renderResults(state.history[0]);
   if (navigator.vibrate) navigator.vibrate(60);
 }
 
-function renderResults(swing) {
+/** Ease-out count-up for the hero figure. */
+function animateNumber(el, to) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.textContent = to.toFixed(0);
+    return;
+  }
+  const from = parseFloat(el.textContent) || 0;
+  const t0 = performance.now();
+  const dur = 650;
+  const tick = (now) => {
+    const u = Math.min(1, (now - t0) / dur);
+    const e = 1 - Math.pow(1 - u, 3);
+    el.textContent = (from + (to - from) * e).toFixed(0);
+    if (u < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function renderResults(swing, { animate = true } = {}) {
   const { club, chsMps, launch, flight, metrics, review } = swing;
   $('#results').classList.remove('hidden');
 
-  // Hero: carry distance.
-  $('#carryValue').textContent = toDistUnit(flight.carryM).toFixed(0);
+  // Hero: carry distance, with count-up, PB badge, and delta vs last shot.
+  if (animate) animateNumber($('#carryValue'), toDistUnit(flight.carryM));
+  else $('#carryValue').textContent = toDistUnit(flight.carryM).toFixed(0);
   $('#carryUnit').textContent = distUnitLabel();
   $('#carryClub').textContent =
     `${club.name} · ${metrics ? `swing #${swing.n}` : `range shot #${swing.n}`}`;
+
+  $('#pbBadge').classList.toggle('hidden', !(swing.pb && swing.pb.isPB && swing.pb.prevPB > 0));
+
+  const deltaEl = $('#carryDelta');
+  // Compare against the previous shot with the SAME club — cross-club
+  // deltas (driver vs wedge) would be meaningless.
+  const prev = state.history.find((s) => s !== swing && s.club.id === club.id);
+  if (prev) {
+    const d = toDistUnit(flight.carryM - prev.flight.carryM);
+    deltaEl.textContent =
+      `${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(0)} ${distUnitLabel()} vs last ${club.name}`;
+    deltaEl.className = 'hero-delta ' + (d >= 0 ? 'delta-up' : 'delta-down');
+  } else {
+    deltaEl.textContent = '';
+    deltaEl.className = 'hero-delta';
+  }
 
   const tiles = [
     ['Clubhead speed', `${toSpeedUnit(chsMps).toFixed(0)} ${speedUnitLabel()}`],
@@ -365,7 +471,8 @@ function renderResults(swing) {
     grid.appendChild(tile);
   }
 
-  // Trajectory replay.
+  // Trajectory replay, with the personal-best flag for this club.
+  state.trajectory.setPB(bestForClub(state.leaderboard, club.id));
   state.trajectory.show(flight);
 
   // Swing score + advice (camera swings only — a range shot has no form data).
@@ -426,11 +533,39 @@ function renderHistory() {
   $('#historyWrap').classList.toggle('hidden', state.history.length === 0);
 }
 
+function renderLeaderboard() {
+  const list = $('#leaderboardList');
+  list.innerHTML = '';
+  $('#leaderboardEmpty').classList.toggle('hidden', state.leaderboard.length > 0);
+  $('#lbClear').classList.toggle('hidden', state.leaderboard.length === 0);
+
+  state.leaderboard.forEach((e, i) => {
+    const li = document.createElement('li');
+    li.className =
+      'lb-row' + (i < 3 ? ` lb-medal-${i + 1}` : '') + (e.t === state.lastEntryT ? ' lb-new' : '');
+    li.innerHTML = `
+      <span class="lb-rank"></span>
+      <span class="lb-main"><span class="lb-club"></span><span class="lb-meta"></span></span>
+      <span class="lb-carry"></span>`;
+    li.querySelector('.lb-rank').textContent = i + 1;
+    li.querySelector('.lb-club').textContent = e.clubName;
+    const date = new Date(e.t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    li.querySelector('.lb-meta').textContent =
+      `${toSpeedUnit(e.chsMps).toFixed(0)} ${speedUnitLabel()} · ` +
+      `total ${toDistUnit(e.totalM).toFixed(0)} ${distUnitLabel()} · ` +
+      (e.score != null ? `score ${e.score}` : 'range shot') + ` · ${date}`;
+    li.querySelector('.lb-carry').textContent =
+      `${toDistUnit(e.carryM).toFixed(0)} ${distUnitLabel()}`;
+    list.appendChild(li);
+  });
+}
+
 // ── Wire-up ──────────────────────────────────────────────────────────────
 
 async function init() {
   buildClubSelect();
-  state.trajectory = new TrajectoryView($('#trajCanvas'));
+  restoreSaved();
+  state.trajectory = new TrajectoryView($('#trajCanvas'), $('#trajTip'));
   window.addEventListener('resize', () => state.trajectory.resize());
 
   const MODEL_BLOCKED_MSG =
@@ -466,6 +601,7 @@ async function init() {
       `${toSpeedUnit(mph * MPH_TO_MPS).toFixed(0)} ${speedUnitLabel()}`;
   };
   $('#rangeSpeed').addEventListener('input', refreshRangeLabel);
+  $('#rangeSpeed').addEventListener('change', saveSettings);
   $('#rangeSimulate').addEventListener('click', simulateRangeShot);
   refreshRangeLabel();
 
@@ -473,23 +609,60 @@ async function init() {
     state.units = ev.target.checked ? 'm' : 'yd';
     state.trajectory.setUnits(state.units);
     refreshRangeLabel();
-    if (state.history.length) renderResults(state.history[0]);
+    renderLeaderboard();
+    if (state.history.length) renderResults(state.history[0], { animate: false });
+    saveSettings();
   });
 
   $('#mirrorToggle').addEventListener('change', (ev) => {
     $('#stage').classList.toggle('mirrored', ev.target.checked);
+    saveSettings();
   });
 
   for (const id of ['handedness', 'calibration']) {
-    $('#' + id).addEventListener('change', () => makeAnalyzer());
+    $('#' + id).addEventListener('change', () => {
+      makeAnalyzer();
+      saveSettings();
+    });
   }
   $('#calibration').addEventListener('input', () => {
     $('#calibrationValue').textContent = `${Math.round(parseFloat($('#calibration').value) * 100)}%`;
   });
+  for (const id of ['temperature', 'altitude']) {
+    $('#' + id).addEventListener('change', saveSettings);
+  }
 
   $('#settingsToggle').addEventListener('click', () => {
     $('#settingsPanel').classList.toggle('hidden');
   });
+
+  // Leaderboard: two-step clear so one stray tap can't wipe history.
+  let clearArmed = null;
+  $('#lbClear').addEventListener('click', () => {
+    const btn = $('#lbClear');
+    if (clearArmed === null) {
+      btn.textContent = 'Really clear?';
+      clearArmed = setTimeout(() => {
+        clearArmed = null;
+        btn.textContent = 'Clear';
+      }, 2500);
+      return;
+    }
+    clearTimeout(clearArmed);
+    clearArmed = null;
+    btn.textContent = 'Clear';
+    state.leaderboard = [];
+    state.lastEntryT = 0;
+    saveSettings();
+    renderLeaderboard();
+  });
+
+  if (!persistent) {
+    $('#lbNote').textContent =
+      'This environment blocks browser storage, so the leaderboard lasts for this visit only. ' +
+      'Open the app locally to keep it forever.';
+  }
+  renderLeaderboard();
 }
 
 init();

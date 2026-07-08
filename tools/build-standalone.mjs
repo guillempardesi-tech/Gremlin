@@ -23,7 +23,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const css = await readFile(join(ROOT, 'css/style.css'), 'utf8');
 
 // Dependency order matters: later files reference earlier declarations.
-const ORDER = ['clubs', 'physics', 'swing', 'advice', 'trajectory', 'main'];
+const ORDER = ['clubs', 'physics', 'storage', 'swing', 'advice', 'trajectory', 'main'];
 let bundle = '';
 for (const name of ORDER) {
   let src = await readFile(join(ROOT, `js/${name}.js`), 'utf8');

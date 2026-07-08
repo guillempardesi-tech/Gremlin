@@ -28,9 +28,13 @@ function run(club) {
   });
 }
 
+// Only TrackMan-anchored clubs count toward calibration error; 'est' clubs
+// are interpolations and are printed for sanity but never scored.
+const ANCHORED = CLUBS.filter((c) => c.ref === 'trackman');
+
 function objective() {
   let err = 0;
-  for (const club of CLUBS) {
+  for (const club of ANCHORED) {
     const r = run(club);
     const carryYd = r.carryM * M_TO_YD;
     err += ((carryYd - club.carryRefYd) / club.carryRefYd) ** 2;
@@ -47,7 +51,7 @@ function objective() {
 
 function rollObjective() {
   let err = 0;
-  for (const club of CLUBS) {
+  for (const club of ANCHORED) {
     const r = run(club);
     const rollTgt = club.totalRefYd - club.carryRefYd;
     const rollYd = r.rollM * M_TO_YD;
@@ -113,12 +117,15 @@ function table() {
     const r = run(club);
     rows.push({
       club: club.name,
+      src: club.ref === 'trackman' ? 'TM' : 'est',
       'ball mph': (club.chsRefMph * club.smash).toFixed(1),
       'launch°': club.launchDeg,
       spin: club.spinRpm,
       'carry yd (sim)': (r.carryM * M_TO_YD).toFixed(1),
-      'carry yd (TM)': club.carryRefYd,
-      'err %': (((r.carryM * M_TO_YD) / club.carryRefYd - 1) * 100).toFixed(1),
+      'carry yd (ref)': club.carryRefYd,
+      'err %': club.ref === 'trackman'
+        ? (((r.carryM * M_TO_YD) / club.carryRefYd - 1) * 100).toFixed(1)
+        : '—',
       'apex yd': (r.apexM * M_TO_YD).toFixed(1),
       'land°': r.landAngleDeg.toFixed(1),
       'roll yd (sim)': (r.rollM * M_TO_YD).toFixed(1),
