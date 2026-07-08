@@ -130,6 +130,9 @@ async function startCamera() {
   const video = $('#video');
   stopVideoFile();
   try {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('camera access is not available in this environment');
+    }
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: 'environment',
@@ -145,7 +148,8 @@ async function startCamera() {
     beginSession();
   } catch (err) {
     $('#loadStatus').textContent =
-      'Camera unavailable: ' + err.message + ' — you can still analyse an uploaded video.';
+      'Camera unavailable: ' + err.message +
+      ' — use Range mode below, or run the app locally for live tracking.';
   }
 }
 
@@ -285,15 +289,33 @@ function setPhaseBadge(label, phase) {
 
 // ── Swing completion → physics → UI ─────────────────────────────────────
 
+function currentAirDensity() {
+  return airDensity(
+    parseFloat($('#temperature').value) || 20,
+    parseFloat($('#altitude').value) || 0
+  );
+}
+
+/** Range mode: physics-only shot from a chosen clubhead speed (no camera). */
+function simulateRangeShot() {
+  const club = getClub($('#clubSelect').value);
+  const chsMps = parseFloat($('#rangeSpeed').value) * MPH_TO_MPS;
+  const launch = launchConditions(club, chsMps);
+  const flight = simulateFlight({ ...launch, rho: currentAirDensity() });
+
+  state.swingCount += 1;
+  state.history.unshift({
+    n: state.swingCount, club, chsMps, launch, flight, metrics: null, review: null,
+  });
+  if (state.history.length > 20) state.history.pop();
+  renderResults(state.history[0]);
+}
+
 function onSwingComplete(metrics) {
   const club = getClub($('#clubSelect').value);
   const chsMps = state.analyzer.estimateClubheadSpeed(club.lengthM);
   const launch = launchConditions(club, chsMps);
-  const rho = airDensity(
-    parseFloat($('#temperature').value) || 20,
-    parseFloat($('#altitude').value) || 0
-  );
-  const flight = simulateFlight({ ...launch, rho });
+  const flight = simulateFlight({ ...launch, rho: currentAirDensity() });
   const review = evaluateSwing(metrics);
 
   state.swingCount += 1;
@@ -311,7 +333,8 @@ function renderResults(swing) {
   // Hero: carry distance.
   $('#carryValue').textContent = toDistUnit(flight.carryM).toFixed(0);
   $('#carryUnit').textContent = distUnitLabel();
-  $('#carryClub').textContent = `${club.name} · swing #${swing.n}`;
+  $('#carryClub').textContent =
+    `${club.name} · ${metrics ? `swing #${swing.n}` : `range shot #${swing.n}`}`;
 
   const tiles = [
     ['Clubhead speed', `${toSpeedUnit(chsMps).toFixed(0)} ${speedUnitLabel()}`],
@@ -322,11 +345,15 @@ function renderResults(swing) {
     ['Spin', `${Math.round(launch.spinRpm / 10) * 10} rpm`],
     ['Land angle', `${flight.landAngleDeg.toFixed(0)}°`],
     ['Flight time', `${flight.flightTimeS.toFixed(1)} s`],
-    ['Tempo', metrics.tempoRatio ? `${metrics.tempoRatio.toFixed(1)} : 1` : '—'],
-    ['X-Factor', `${metrics.xFactor.toFixed(0)}°`],
-    ['Shoulder turn', `${metrics.shoulderTurn.toFixed(0)}°`],
-    ['Hip turn', `${metrics.hipTurn.toFixed(0)}°`],
   ];
+  if (metrics) {
+    tiles.push(
+      ['Tempo', metrics.tempoRatio ? `${metrics.tempoRatio.toFixed(1)} : 1` : '—'],
+      ['X-Factor', `${metrics.xFactor.toFixed(0)}°`],
+      ['Shoulder turn', `${metrics.shoulderTurn.toFixed(0)}°`],
+      ['Hip turn', `${metrics.hipTurn.toFixed(0)}°`]
+    );
+  }
   const grid = $('#statGrid');
   grid.innerHTML = '';
   for (const [label, value] of tiles) {
@@ -341,7 +368,12 @@ function renderResults(swing) {
   // Trajectory replay.
   state.trajectory.show(flight);
 
-  // Swing score + advice.
+  // Swing score + advice (camera swings only — a range shot has no form data).
+  $('#reviewCard').classList.toggle('hidden', !review);
+  if (!review) {
+    renderHistory();
+    return;
+  }
   $('#scoreValue').textContent = review.score;
   const list = $('#adviceList');
   list.innerHTML = '';
@@ -382,7 +414,7 @@ function renderHistory() {
       `${toSpeedUnit(s.chsMps).toFixed(0)} ${speedUnitLabel()}`,
       `${toDistUnit(s.flight.carryM).toFixed(0)} ${distUnitLabel()}`,
       `${toDistUnit(s.flight.totalM).toFixed(0)} ${distUnitLabel()}`,
-      `${s.review.score}`,
+      s.review ? `${s.review.score}` : '—',
     ];
     for (const c of cells) {
       const td = document.createElement('td');
@@ -401,13 +433,18 @@ async function init() {
   state.trajectory = new TrajectoryView($('#trajCanvas'));
   window.addEventListener('resize', () => state.trajectory.resize());
 
+  const MODEL_BLOCKED_MSG =
+    'Live tracking needs internet access to fetch the pose model, and this ' +
+    'environment is blocking it. Range mode below works fully — or run the app ' +
+    'locally (see README) for camera analysis.';
+
   $('#startCamera').addEventListener('click', async () => {
     $('#loadStatus').textContent = '';
     try {
       if (!state.landmarker) await loadModel();
       await startCamera();
     } catch (e) {
-      $('#loadStatus').textContent = 'Failed to load pose model: ' + e.message;
+      $('#loadStatus').textContent = MODEL_BLOCKED_MSG;
     }
   });
 
@@ -419,13 +456,23 @@ async function init() {
       if (!state.landmarker) await loadModel();
       await loadVideoFile(file);
     } catch (e) {
-      $('#loadStatus').textContent = 'Failed: ' + e.message;
+      $('#loadStatus').textContent = MODEL_BLOCKED_MSG;
     }
   });
+
+  const refreshRangeLabel = () => {
+    const mph = parseFloat($('#rangeSpeed').value);
+    $('#rangeSpeedValue').textContent =
+      `${toSpeedUnit(mph * MPH_TO_MPS).toFixed(0)} ${speedUnitLabel()}`;
+  };
+  $('#rangeSpeed').addEventListener('input', refreshRangeLabel);
+  $('#rangeSimulate').addEventListener('click', simulateRangeShot);
+  refreshRangeLabel();
 
   $('#unitToggle').addEventListener('change', (ev) => {
     state.units = ev.target.checked ? 'm' : 'yd';
     state.trajectory.setUnits(state.units);
+    refreshRangeLabel();
     if (state.history.length) renderResults(state.history[0]);
   });
 

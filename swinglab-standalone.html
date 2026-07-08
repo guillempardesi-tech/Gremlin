@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SwingLab — real-time golf swing analyzer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9B%B3%3C/text%3E%3C/svg%3E" />
+  <style>
+/* SwingLab — dark, video-first UI.
+   Chart & chrome tokens follow the validated reference palette (dark mode). */
+
+:root {
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #222220;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --series: #3987e5;      /* categorical slot 1, dark step */
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --radius: 12px;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+
+/* ── Top bar ─────────────────────────────────────────────────────────── */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark { font-size: 26px; }
+.brand h1 { font-size: 18px; font-weight: 650; letter-spacing: 0.2px; }
+.tagline { font-size: 12px; color: var(--muted); }
+
+.club-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.club-picker label { color: var(--ink-2); font-size: 13px; }
+.club-info { color: var(--muted); font-size: 12px; }
+
+select, input[type="number"] {
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.ghost-btn {
+  background: transparent;
+  color: var(--ink-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.ghost-btn:hover { background: var(--surface-2); color: var(--ink); }
+
+.primary-btn {
+  background: var(--series);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 20px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary-btn:hover { filter: brightness(1.1); }
+
+/* ── Settings ───────────────────────────────────────────────────────── */
+
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+  padding: 14px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.setting { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.setting label { color: var(--ink-2); }
+.setting input[type="range"] { width: 160px; accent-color: var(--series); }
+.setting input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--series); }
+#calibrationValue { color: var(--muted); }
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
+  gap: 18px;
+  padding: 18px 20px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+/* ── Capture column ─────────────────────────────────────────────────── */
+
+.start-overlay {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px;
+}
+.start-overlay h2 { font-size: 17px; margin-bottom: 12px; }
+.start-overlay ol { margin: 0 0 18px 20px; color: var(--ink-2); }
+.start-overlay li { margin-bottom: 6px; }
+.start-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.file-btn { display: inline-flex; align-items: center; gap: 6px; }
+.load-status { margin-top: 12px; color: var(--warning); font-size: 13px; min-height: 1.2em; }
+.fineprint { margin-top: 12px; color: var(--muted); font-size: 12px; }
+
+.range-mode {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--grid);
+}
+.range-mode h3 { font-size: 14px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
+.range-hint { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.range-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.range-controls label { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.range-controls strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.range-controls input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--series); }
+
+.stage {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border);
+}
+.stage video { display: block; width: 100%; height: auto; }
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.stage.mirrored video, .stage.mirrored canvas { transform: scaleX(-1); }
+
+.stage-hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.phase-badge {
+  background: rgba(13, 13, 13, 0.75);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 13px;
+  backdrop-filter: blur(4px);
+}
+.phase-badge[data-phase="backswing"],
+.phase-badge[data-phase="downswing"] { border-color: var(--series); color: var(--series); }
+.phase-badge[data-phase="address"] { border-color: var(--good); color: #7fd97f; }
+.live-speed {
+  background: rgba(13, 13, 13, 0.75);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.live-speed:empty { display: none; }
+
+/* ── Results column ─────────────────────────────────────────────────── */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.card h3 { font-size: 14px; font-weight: 600; color: var(--ink-2); margin-bottom: 10px; }
+
+.hero-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.hero-label { font-size: 13px; color: var(--ink-2); }
+.hero-row { display: flex; align-items: baseline; gap: 8px; }
+.hero-figure { font-size: 56px; font-weight: 600; line-height: 1.1; }
+.hero-unit { font-size: 20px; color: var(--muted); }
+.hero-sub { font-size: 13px; color: var(--muted); }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.stat-label { font-size: 11px; color: var(--muted); }
+.stat-value { font-size: 18px; font-weight: 600; }
+
+.traj-canvas { width: 100%; height: 220px; display: block; }
+
+.score-row { display: flex; align-items: center; justify-content: space-between; }
+.score-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.score-pill strong { color: var(--ink); font-size: 15px; }
+
+.advice-list { list-style: none; margin-top: 10px; }
+.finding {
+  border-top: 1px solid var(--grid);
+  padding: 12px 0;
+}
+.finding:first-child { border-top: none; padding-top: 4px; }
+.finding-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.finding-icon { font-size: 13px; width: 18px; text-align: center; }
+.finding-sev {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.finding-title { font-weight: 600; }
+.finding-measured { font-size: 12px; color: var(--muted); }
+.finding-detail { font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+.finding-drill { font-size: 13px; color: var(--ink-2); margin-top: 6px; padding-left: 10px; border-left: 2px solid var(--series); }
+
+.sev-good  .finding-icon, .sev-good  .finding-sev { color: var(--good); }
+.sev-info  .finding-icon, .sev-info  .finding-sev { color: var(--warning); }
+.sev-minor .finding-icon, .sev-minor .finding-sev { color: var(--serious); }
+.sev-major .finding-icon, .sev-major .finding-sev { color: var(--critical); }
+
+.table-scroll { overflow-x: auto; }
+.history { width: 100%; border-collapse: collapse; font-size: 13px; }
+.history th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 6px 10px 6px 0;
+  border-bottom: 1px solid var(--baseline);
+}
+.history td {
+  padding: 7px 10px 7px 0;
+  border-bottom: 1px solid var(--grid);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.methodology p { font-size: 13px; color: var(--muted); }
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">⛳</span>
+      <div>
+        <h1>SwingLab</h1>
+        <p class="tagline">Real-time swing analysis · physics-based ball flight</p>
+      </div>
+    </div>
+    <div class="club-picker">
+      <label for="clubSelect">Club</label>
+      <select id="clubSelect" aria-label="Select golf club"></select>
+      <span id="clubInfo" class="club-info"></span>
+    </div>
+    <button id="settingsToggle" class="ghost-btn" aria-label="Settings">⚙ Settings</button>
+  </header>
+
+  <section id="settingsPanel" class="settings hidden">
+    <div class="setting">
+      <label for="handedness">Handedness</label>
+      <select id="handedness">
+        <option value="right" selected>Right-handed</option>
+        <option value="left">Left-handed</option>
+      </select>
+    </div>
+    <div class="setting">
+      <label for="unitToggle">Metric units</label>
+      <input type="checkbox" id="unitToggle" />
+    </div>
+    <div class="setting">
+      <label for="mirrorToggle">Mirror view</label>
+      <input type="checkbox" id="mirrorToggle" />
+    </div>
+    <div class="setting">
+      <label for="calibration">Speed calibration <span id="calibrationValue">100%</span></label>
+      <input type="range" id="calibration" min="0.7" max="1.3" step="0.01" value="1.0" />
+    </div>
+    <div class="setting">
+      <label for="temperature">Air temp (°C)</label>
+      <input type="number" id="temperature" value="20" min="-20" max="45" />
+    </div>
+    <div class="setting">
+      <label for="altitude">Altitude (m)</label>
+      <input type="number" id="altitude" value="0" min="0" max="4000" step="50" />
+    </div>
+  </section>
+
+  <main class="layout">
+    <section class="capture-col">
+      <div id="startOverlay" class="start-overlay">
+        <h2>Set up your camera</h2>
+        <ol>
+          <li><strong>Face-on view:</strong> camera pointing at your chest, ball between you and the camera.</li>
+          <li><strong>Full body in frame</strong> — head to feet, roughly 3–4 m away.</li>
+          <li>Good light, steady phone/laptop. 60 fps camera if available.</li>
+          <li>Address the ball, hold still for half a second, then swing. Detection is automatic.</li>
+        </ol>
+        <div class="start-actions">
+          <button id="startCamera" class="primary-btn">▶ Start camera</button>
+          <label class="ghost-btn file-btn">
+            ⬆ Analyse a video file
+            <input type="file" id="videoFile" accept="video/*" hidden />
+          </label>
+        </div>
+        <p id="loadStatus" class="load-status" role="status"></p>
+        <p class="fineprint">All processing runs locally in your browser — no video ever leaves your device.</p>
+
+        <div class="range-mode">
+          <h3>Range mode — no camera needed</h3>
+          <p class="range-hint">Pick a club up top, dial in a clubhead speed, and the same calibrated
+            physics produces the full shot. Handy where camera access is blocked.</p>
+          <div class="range-controls">
+            <label for="rangeSpeed">Clubhead speed <strong id="rangeSpeedValue">90 mph</strong></label>
+            <input type="range" id="rangeSpeed" min="40" max="130" step="1" value="90" />
+            <button id="rangeSimulate" class="primary-btn">Simulate shot</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="stage" class="stage hidden">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div class="stage-hud">
+          <span id="phaseBadge" class="phase-badge" data-phase="idle">Waiting for address…</span>
+          <span id="liveSpeed" class="live-speed"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="results-col">
+      <div id="results" class="hidden">
+        <div class="hero-card">
+          <div class="hero-label">Carry distance</div>
+          <div class="hero-row">
+            <span id="carryValue" class="hero-figure">–</span>
+            <span id="carryUnit" class="hero-unit">yd</span>
+          </div>
+          <div id="carryClub" class="hero-sub"></div>
+        </div>
+
+        <div id="statGrid" class="stat-grid"></div>
+
+        <div class="card">
+          <h3>Ball flight</h3>
+          <canvas id="trajCanvas" class="traj-canvas"></canvas>
+        </div>
+
+        <div class="card" id="reviewCard">
+          <div class="score-row">
+            <h3>Swing review</h3>
+            <div class="score-pill">Score <strong id="scoreValue">–</strong>/100</div>
+          </div>
+          <ul id="adviceList" class="advice-list"></ul>
+        </div>
+
+        <div id="historyWrap" class="card hidden">
+          <h3>Session history</h3>
+          <div class="table-scroll">
+            <table class="history">
+              <thead>
+                <tr><th>Swing</th><th>Club</th><th>Club speed</th><th>Carry</th><th>Total</th><th>Score</th></tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card methodology">
+        <h3>How the numbers are made</h3>
+        <p>
+          Pose is tracked in 3D at video rate (MediaPipe BlazePose, metric world landmarks,
+          One-Euro filtered). Clubhead speed is estimated from your peak hand speed through the
+          double-pendulum lever geometry of the swing. Ball speed, launch and spin come from your
+          selected club's impact model anchored to published TrackMan tour data, and the flight is
+          integrated with a spin-dependent drag + Magnus-lift model (RK4) calibrated to reproduce
+          tour carries within ~2%. Form advice compares your tempo, X-Factor, posture and release
+          timing against motion-capture norms from the golf-science literature. A camera is not a
+          radar: treat distances as good estimates, not gospel.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+
+/* ── js/clubs.js ───────────────────────────────────────── */
+/**
+ * Club database.
+ *
+ * Reference launch conditions are the published TrackMan PGA Tour averages
+ * (clubhead speed, smash factor, launch angle, spin rate, carry). They anchor
+ * the per-club launch model: the app measures YOUR clubhead speed from the
+ * camera, then scales ball speed / spin from these references.
+ *
+ *  - Ball speed = clubhead speed x smash factor. Smash factor is club-specific
+ *    (it falls with loft because more of the impact energy goes into spin and
+ *    oblique deflection; the driver value ~1.48-1.50 reflects the USGA COR
+ *    limit of 0.83).
+ *  - Spin scales approximately linearly with clubhead speed for a given club
+ *    (spin loft is a club property; tangential impact velocity ~ CHS).
+ *  - Launch angle is treated as the club's reference dynamic-launch value.
+ *
+ * Lengths are standard men's spec converted to meters.
+ */
+
+const CLUBS = [
+  { id: 'driver', name: 'Driver',        loftDeg: 10.5, lengthM: 1.156, smash: 1.48, launchDeg: 10.9, spinRpm: 2686, chsRefMph: 113, carryRefYd: 275, totalRefYd: 297 },
+  { id: '3w',     name: '3 Wood',        loftDeg: 15.0, lengthM: 1.092, smash: 1.48, launchDeg:  9.2, spinRpm: 3655, chsRefMph: 107, carryRefYd: 243, totalRefYd: 262 },
+  { id: '5w',     name: '5 Wood',        loftDeg: 18.0, lengthM: 1.067, smash: 1.47, launchDeg:  9.4, spinRpm: 4350, chsRefMph: 103, carryRefYd: 230, totalRefYd: 246 },
+  { id: 'hybrid', name: 'Hybrid',        loftDeg: 19.0, lengthM: 1.029, smash: 1.46, launchDeg: 10.2, spinRpm: 4437, chsRefMph: 100, carryRefYd: 225, totalRefYd: 238 },
+  { id: '3i',     name: '3 Iron',        loftDeg: 21.0, lengthM: 0.991, smash: 1.45, launchDeg: 10.4, spinRpm: 4630, chsRefMph:  98, carryRefYd: 212, totalRefYd: 226 },
+  { id: '4i',     name: '4 Iron',        loftDeg: 24.0, lengthM: 0.978, smash: 1.43, launchDeg: 11.0, spinRpm: 4836, chsRefMph:  96, carryRefYd: 203, totalRefYd: 213 },
+  { id: '5i',     name: '5 Iron',        loftDeg: 27.0, lengthM: 0.965, smash: 1.41, launchDeg: 12.1, spinRpm: 5361, chsRefMph:  94, carryRefYd: 194, totalRefYd: 202 },
+  { id: '6i',     name: '6 Iron',        loftDeg: 30.0, lengthM: 0.953, smash: 1.38, launchDeg: 14.1, spinRpm: 6231, chsRefMph:  92, carryRefYd: 183, totalRefYd: 189 },
+  { id: '7i',     name: '7 Iron',        loftDeg: 34.0, lengthM: 0.940, smash: 1.33, launchDeg: 16.3, spinRpm: 7097, chsRefMph:  90, carryRefYd: 172, totalRefYd: 176 },
+  { id: '8i',     name: '8 Iron',        loftDeg: 38.0, lengthM: 0.927, smash: 1.32, launchDeg: 18.1, spinRpm: 7998, chsRefMph:  87, carryRefYd: 160, totalRefYd: 164 },
+  { id: '9i',     name: '9 Iron',        loftDeg: 42.0, lengthM: 0.914, smash: 1.28, launchDeg: 20.4, spinRpm: 8647, chsRefMph:  85, carryRefYd: 148, totalRefYd: 151 },
+  { id: 'pw',     name: 'Pitching Wedge',loftDeg: 46.0, lengthM: 0.908, smash: 1.23, launchDeg: 24.2, spinRpm: 9304, chsRefMph:  83, carryRefYd: 136, totalRefYd: 139 },
+  { id: 'gw',     name: 'Gap Wedge',     loftDeg: 50.0, lengthM: 0.902, smash: 1.18, launchDeg: 26.5, spinRpm: 9600, chsRefMph:  79, carryRefYd: 120, totalRefYd: 123 },
+  { id: 'sw',     name: 'Sand Wedge',    loftDeg: 54.0, lengthM: 0.895, smash: 1.12, launchDeg: 28.5, spinRpm: 10000, chsRefMph: 76, carryRefYd: 105, totalRefYd: 108 },
+  { id: 'lw',     name: 'Lob Wedge',     loftDeg: 58.0, lengthM: 0.889, smash: 1.06, launchDeg: 31.0, spinRpm: 10400, chsRefMph: 73, carryRefYd:  90, totalRefYd:  93 },
+];
+
+function getClub(id) {
+  return CLUBS.find((c) => c.id === id) || CLUBS[0];
+}
+
+const MPH_TO_MPS = 0.44704;
+
+/**
+ * Derive launch conditions for a measured clubhead speed.
+ * @param {object} club   entry from CLUBS
+ * @param {number} chsMps clubhead speed, m/s
+ * @returns {{ ballSpeedMps:number, launchDeg:number, spinRpm:number }}
+ */
+function launchConditions(club, chsMps) {
+  const chsRefMps = club.chsRefMph * MPH_TO_MPS;
+  const speedRatio = chsMps / chsRefMps;
+  const ballSpeedMps = chsMps * club.smash;
+  // Spin ~ proportional to clubhead speed at fixed spin loft (Penner 2003).
+  const spinRpm = Math.min(13000, Math.max(600, club.spinRpm * speedRatio));
+  return { ballSpeedMps, launchDeg: club.launchDeg, spinRpm };
+}
+
+
+/* ── js/physics.js ───────────────────────────────────────── */
+/**
+ * Golf ball flight simulator.
+ *
+ * Integrates the full equations of motion for a spinning golf ball:
+ *
+ *   m dv/dt = m g  +  F_drag  +  F_magnus
+ *   F_drag   = -1/2 rho Cd A |v| v
+ *   F_magnus = +1/2 rho Cl A |v|^2  (spin_axis x v_hat)   [backspin lifts]
+ *
+ * Cd and Cl are functions of the spin ratio S = r*omega/|v| — the standard
+ * non-dimensional parameter for a spinning sphere (Bearman & Harvey 1976;
+ * Smits & Smith 1994; Penner 2003, "The physics of golf", Rep. Prog. Phys. 66).
+ *
+ *   Cd(S) = CD0 + CD1 * S              (pressure drag grows with spin)
+ *   Cl(S) = CLMAX * S / (S + CL_HALF)  (saturating lift response)
+ *
+ * The four aerodynamic constants were CALIBRATED numerically (tools/validate.mjs)
+ * so that, fed the published TrackMan PGA Tour launch conditions (ball speed,
+ * launch angle, spin) for 12 clubs, the simulator reproduces the published tour
+ * carry distances and apex heights. See README for the validation table.
+ *
+ * Spin decays exponentially in flight with time constant SPIN_TAU (~4%/s for a
+ * driver, consistent with radar observations; Smits & Smith 1994).
+ *
+ * Integration: classic 4th-order Runge-Kutta, dt = 4 ms.
+ */
+
+const BALL = {
+  massKg: 0.04593,       // maximum legal mass (R&A/USGA rule: <= 45.93 g)
+  radiusM: 0.021335,     // minimum legal diameter 42.67 mm
+  areaM2: Math.PI * 0.021335 * 0.021335,
+};
+
+const G = 9.80665;
+
+// Aerodynamic model constants — calibrated against TrackMan tour data.
+// (Values within the envelope of published wind-tunnel measurements for
+// two-piece balls: Bearman & Harvey 1976, Smits & Smith 1994.)
+const AERO = {
+  CD0: 0.2022,
+  CD1: 0.4313,
+  CLMAX: 0.5312,
+  CL_HALF: 0.2125,
+  SPIN_TAU: 25.0,        // s, exponential spin-decay time constant
+};
+
+// Ground-roll model: fitted to TrackMan tour carry-vs-total gaps
+// (see tools/validate.mjs). Roll depends on the landing conditions the
+// simulator itself predicts: horizontal land speed, land angle, land spin.
+const ROLL = {
+  A: 3.9,                // s   (scales horizontal landing speed)
+  THETA0: 38,            // deg (steeper landings kill roll exponentially)
+  SPIN0: 4000,           // rpm (spin at landing brakes the ball)
+};
+
+/**
+ * Air density from site conditions (ISA barometric formula + ideal gas law).
+ * @param {number} temperatureC  ambient temperature, deg C
+ * @param {number} altitudeM     altitude above sea level, m
+ */
+function airDensity(temperatureC = 20, altitudeM = 0) {
+  const p = 101325 * Math.pow(1 - 2.25577e-5 * Math.min(altitudeM, 11000), 5.25588); // Pa
+  const T = temperatureC + 273.15;
+  const R_SPECIFIC = 287.058; // J/(kg K), dry air
+  return p / (R_SPECIFIC * T);
+}
+
+function coefficients(speed, omegaRadS) {
+  const S = speed > 1e-6 ? (BALL.radiusM * omegaRadS) / speed : 0;
+  const cd = AERO.CD0 + AERO.CD1 * Math.min(S, 0.45);
+  const cl = (AERO.CLMAX * S) / (S + AERO.CL_HALF);
+  return { cd, cl };
+}
+
+/**
+ * Simulate a ball flight in the vertical plane (pure backspin; a face-on
+ * camera cannot observe face-to-path sidespin, so the model assumes a
+ * straight strike — see README "Honest limitations").
+ *
+ * @param {object} opts
+ * @param {number} opts.ballSpeedMps  launch ball speed (m/s)
+ * @param {number} opts.launchDeg    launch angle above horizontal (deg)
+ * @param {number} opts.spinRpm      backspin at launch (rpm)
+ * @param {number} [opts.rho]        air density (kg/m^3); default sea level 20 C
+ * @returns {{
+ *   carryM:number, rollM:number, totalM:number, apexM:number,
+ *   flightTimeS:number, landAngleDeg:number, landSpeedMps:number,
+ *   landSpinRpm:number, points:Array<{x:number,y:number,t:number}>
+ * }}
+ */
+function simulateFlight({ ballSpeedMps, launchDeg, spinRpm, rho = airDensity() }) {
+  const dt = 0.004;
+  const k = (0.5 * rho * BALL.areaM2) / BALL.massKg; // aero force / (m |v|^2) prefactor
+  const launch = (launchDeg * Math.PI) / 180;
+
+  // State: x, y, vx, vy. Spin handled as exponential decay (weak coupling).
+  let x = 0;
+  let y = 0;
+  let vx = ballSpeedMps * Math.cos(launch);
+  let vy = ballSpeedMps * Math.sin(launch);
+  let t = 0;
+
+  const omega0 = (spinRpm * 2 * Math.PI) / 60;
+
+  const accel = (vxA, vyA, tA) => {
+    const speed = Math.hypot(vxA, vyA);
+    const omega = omega0 * Math.exp(-tA / AERO.SPIN_TAU);
+    const { cd, cl } = coefficients(speed, omega);
+    // Drag along -v; Magnus (backspin) perpendicular to v, rotated +90 deg
+    // (unit vector (-vy, vx)/|v| lifts a ball moving in +x).
+    const dragX = -k * cd * speed * vxA;
+    const dragY = -k * cd * speed * vyA;
+    const liftX = k * cl * speed * -vyA;
+    const liftY = k * cl * speed * vxA;
+    return { ax: dragX + liftX, ay: dragY + liftY - G };
+  };
+
+  const points = [{ x: 0, y: 0, t: 0 }];
+  let apexM = 0;
+  const MAX_T = 20;
+
+  while (t < MAX_T) {
+    // RK4 step
+    const a1 = accel(vx, vy, t);
+    const k1 = { dx: vx, dy: vy, dvx: a1.ax, dvy: a1.ay };
+
+    const a2 = accel(vx + (dt / 2) * k1.dvx, vy + (dt / 2) * k1.dvy, t + dt / 2);
+    const k2 = { dx: vx + (dt / 2) * k1.dvx, dy: vy + (dt / 2) * k1.dvy, dvx: a2.ax, dvy: a2.ay };
+
+    const a3 = accel(vx + (dt / 2) * k2.dvx, vy + (dt / 2) * k2.dvy, t + dt / 2);
+    const k3 = { dx: vx + (dt / 2) * k2.dvx, dy: vy + (dt / 2) * k2.dvy, dvx: a3.ax, dvy: a3.ay };
+
+    const a4 = accel(vx + dt * k3.dvx, vy + dt * k3.dvy, t + dt);
+    const k4 = { dx: vx + dt * k3.dvx, dy: vy + dt * k3.dvy, dvx: a4.ax, dvy: a4.ay };
+
+    const newX = x + (dt / 6) * (k1.dx + 2 * k2.dx + 2 * k3.dx + k4.dx);
+    const newY = y + (dt / 6) * (k1.dy + 2 * k2.dy + 2 * k3.dy + k4.dy);
+    const newVx = vx + (dt / 6) * (k1.dvx + 2 * k2.dvx + 2 * k3.dvx + k4.dvx);
+    const newVy = vy + (dt / 6) * (k1.dvy + 2 * k2.dvy + 2 * k3.dvy + k4.dvy);
+
+    if (newY < 0 && vy < 0) {
+      // Interpolate the touchdown point between steps.
+      const f = y / (y - newY);
+      x = x + f * (newX - x);
+      t += dt * f;
+      vx = newVx;
+      vy = newVy;
+      y = 0;
+      points.push({ x, y: 0, t });
+      break;
+    }
+
+    x = newX; y = newY; vx = newVx; vy = newVy; t += dt;
+    if (y > apexM) apexM = y;
+    if (points.length === 0 || t - points[points.length - 1].t >= 0.05) {
+      points.push({ x, y, t });
+    }
+  }
+
+  const landSpeedMps = Math.hypot(vx, vy);
+  const landAngleDeg = (Math.atan2(-vy, vx) * 180) / Math.PI;
+  const landSpinRpm = spinRpm * Math.exp(-t / AERO.SPIN_TAU);
+
+  // Empirical ground roll (medium-firm fairway), fitted to tour carry/total gaps.
+  const vHoriz = Math.max(0, vx);
+  const rollM = Math.max(
+    0,
+    ROLL.A * vHoriz * Math.exp(-landAngleDeg / ROLL.THETA0) * Math.exp(-landSpinRpm / ROLL.SPIN0)
+  );
+
+  return {
+    carryM: x,
+    rollM,
+    totalM: x + rollM,
+    apexM,
+    flightTimeS: t,
+    landAngleDeg,
+    landSpeedMps,
+    landSpinRpm,
+    points,
+  };
+}
+
+const M_TO_YD = 1.09361;
+const MPS_TO_MPH = 2.23694;
+
+/* ── js/swing.js ───────────────────────────────────────── */
+/**
+ * Real-time swing analysis from MediaPipe Pose landmarks.
+ *
+ * Pipeline per video frame:
+ *   1. World landmarks (metric, hip-centred) + image landmarks arrive.
+ *   2. Every landmark channel is smoothed with a One-Euro filter
+ *      (Casiez, Roussel & Vogel, CHI 2012) — the standard low-latency
+ *      filter for interactive pose tracking: heavy smoothing at rest,
+ *      minimal lag during fast motion (exactly what a golf swing needs).
+ *   3. A metre-per-normalized-unit scale is estimated each frame from the
+ *      ratio of world-space to image-space shoulder width, so image-space
+ *      translations (head sway, hip sway — invisible in hip-centred world
+ *      coordinates) can be measured in centimetres.
+ *   4. A phase state machine segments the swing:
+ *      IDLE → ADDRESS → BACKSWING → TOP → DOWNSWING → IMPACT → FINISH
+ *   5. At completion, biomechanical metrics and the clubhead-speed estimate
+ *      are emitted.
+ *
+ * Clubhead speed estimation (the camera cannot resolve the clubhead itself —
+ * at 45+ m/s it moves ~1.5 m between 30 fps frames and motion-blurs):
+ * the hands are trackable, so we measure peak hand speed in the downswing
+ * (3-point parabolic refinement around the sampled maximum) and scale it
+ * through the double-pendulum lever geometry:
+ *
+ *   CHS ≈ v_hands,peak × (r_wrist + 0.95·L_club) / r_wrist × G_release
+ *
+ * where r_wrist is the measured shoulder-pivot→wrist radius and G_release
+ * (≈1.53) accounts for the wrist-release whip: at impact the club rotates
+ * faster than the arms as momentum transfers down the chain, and hand speed
+ * peaks mid-downswing then falls ~20–30% into impact (Nesbit 2005, Jorgensen
+ * "The Physics of Golf"). The product is calibrated so that a tour-typical
+ * peak hand speed (~11.5 m/s) with a driver maps to ~113 mph clubhead speed.
+ */
+
+// MediaPipe Pose landmark indices
+const LM = {
+  NOSE: 0,
+  L_SHOULDER: 11, R_SHOULDER: 12,
+  L_ELBOW: 13, R_ELBOW: 14,
+  L_WRIST: 15, R_WRIST: 16,
+  L_HIP: 23, R_HIP: 24,
+  L_KNEE: 25, R_KNEE: 26,
+  L_ANKLE: 27, R_ANKLE: 28,
+};
+
+/** One-Euro filter for one scalar channel. */
+class OneEuro {
+  constructor(minCutoff = 1.7, beta = 0.4, dCutoff = 1.0) {
+    this.minCutoff = minCutoff;
+    this.beta = beta;
+    this.dCutoff = dCutoff;
+    this.xPrev = null;
+    this.dxPrev = 0;
+    this.tPrev = null;
+  }
+  static alpha(cutoff, dt) {
+    const tau = 1 / (2 * Math.PI * cutoff);
+    return 1 / (1 + tau / dt);
+  }
+  filter(x, t) {
+    if (this.xPrev === null) {
+      this.xPrev = x; this.tPrev = t;
+      return x;
+    }
+    const dt = Math.max(1e-3, t - this.tPrev);
+    this.tPrev = t;
+    const dx = (x - this.xPrev) / dt;
+    const aD = OneEuro.alpha(this.dCutoff, dt);
+    this.dxPrev = aD * dx + (1 - aD) * this.dxPrev;
+    const cutoff = this.minCutoff + this.beta * Math.abs(this.dxPrev);
+    const a = OneEuro.alpha(cutoff, dt);
+    this.xPrev = a * x + (1 - a) * this.xPrev;
+    return this.xPrev;
+  }
+  reset() { this.xPrev = null; this.dxPrev = 0; this.tPrev = null; }
+}
+
+/** One-Euro filter over a set of 3D landmarks. */
+class LandmarkFilter {
+  constructor(indices, minCutoff, beta) {
+    this.filters = new Map();
+    for (const i of indices) {
+      this.filters.set(i, [new OneEuro(minCutoff, beta), new OneEuro(minCutoff, beta), new OneEuro(minCutoff, beta)]);
+    }
+  }
+  apply(landmarks, t) {
+    const out = {};
+    for (const [i, [fx, fy, fz]] of this.filters) {
+      const lm = landmarks[i];
+      if (!lm) return null;
+      out[i] = {
+        x: fx.filter(lm.x, t),
+        y: fy.filter(lm.y, t),
+        z: fz.filter(lm.z, t),
+        visibility: lm.visibility ?? 1,
+      };
+    }
+    return out;
+  }
+  reset() { for (const fs of this.filters.values()) fs.forEach((f) => f.reset()); }
+}
+
+const TRACKED = Object.values(LM);
+
+const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 });
+const dist3 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/** Interior angle at joint b (degrees) for segment a-b-c. */
+function jointAngle(a, b, c) {
+  const v1 = { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+  const v2 = { x: c.x - b.x, y: c.y - b.y, z: c.z - b.z };
+  const dot = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+  const m = Math.hypot(v1.x, v1.y, v1.z) * Math.hypot(v2.x, v2.y, v2.z);
+  if (m < 1e-9) return 180;
+  return (Math.acos(Math.max(-1, Math.min(1, dot / m))) * 180) / Math.PI;
+}
+
+/** Rotation of a L→R body line around the vertical axis, degrees, from world landmarks. */
+function horizontalRotation(left, right) {
+  return (Math.atan2(right.z - left.z, right.x - left.x) * 180) / Math.PI;
+}
+
+function unwrapNear(angle, reference) {
+  let a = angle;
+  while (a - reference > 180) a -= 360;
+  while (a - reference < -180) a += 360;
+  return a;
+}
+
+const PHASE = {
+  IDLE: 'idle',
+  ADDRESS: 'address',
+  BACKSWING: 'backswing',
+  TOP: 'top',
+  DOWNSWING: 'downswing',
+  IMPACT: 'impact',
+  FINISH: 'finish',
+  DONE: 'done',
+};
+
+const RELEASE_GAIN = 1.53;
+
+class SwingAnalyzer {
+  /**
+   * @param {object} opts
+   * @param {'right'|'left'} [opts.handedness]
+   * @param {number} [opts.speedCalibration] user gain 0.7–1.3 applied to CHS
+   */
+  constructor({ handedness = 'right', speedCalibration = 1.0 } = {}) {
+    this.handedness = handedness;
+    this.speedCalibration = speedCalibration;
+    this.worldFilter = new LandmarkFilter(TRACKED, 1.7, 0.6);
+    this.imageFilter = new LandmarkFilter(TRACKED, 1.7, 0.6);
+    this.reset();
+  }
+
+  reset() {
+    this.phase = PHASE.IDLE;
+    this.samples = [];
+    this.address = null;          // snapshot at address
+    this.stillSince = null;
+    this.phaseStart = 0;
+    this.tBackswing = null;
+    this.tTop = null;
+    this.tImpact = null;
+    this.topSample = null;
+    this.result = null;
+    this.cooldownUntil = 0;
+    this.maxHandRise = 0;
+    this.targetDir = 0;           // +1 / -1 in image-x: direction of the target
+    this.scale = null;            // metres per normalized-image-unit (EMA, frozen mid-swing)
+    this.worldFilter.reset();
+    this.imageFilter.reset();
+  }
+
+  get lead() {
+    // Lead side faces the target: left arm for a right-handed golfer.
+    return this.handedness === 'right'
+      ? { shoulder: LM.L_SHOULDER, elbow: LM.L_ELBOW, wrist: LM.L_WRIST }
+      : { shoulder: LM.R_SHOULDER, elbow: LM.R_ELBOW, wrist: LM.R_WRIST };
+  }
+
+  /**
+   * Feed one frame.
+   * @param {number} t          seconds (monotonic)
+   * @param {Array}  world      MediaPipe worldLandmarks[0] (metres, hip-centred)
+   * @param {Array}  image      MediaPipe landmarks[0] (normalized image coords)
+   * @returns {{phase:string, handSpeed:number, result:?object}}
+   */
+  update(t, world, image) {
+    const w = this.worldFilter.apply(world, t);
+    const im = this.imageFilter.apply(image, t);
+    if (!w || !im) return { phase: this.phase, handSpeed: 0, result: null };
+
+    const wristMidW = mid(w[LM.L_WRIST], w[LM.R_WRIST]);
+    const hipMidIm = mid(im[LM.L_HIP], im[LM.R_HIP]);
+    const shoulderMidW = mid(w[LM.L_SHOULDER], w[LM.R_SHOULDER]);
+    const hipMidW = mid(w[LM.L_HIP], w[LM.R_HIP]);
+    const shoulderMidIm = mid(im[LM.L_SHOULDER], im[LM.R_SHOULDER]);
+
+    // Metres per normalized-image-unit, from torso length seen in both spaces.
+    // Torso length (not shoulder width!) because in a face-on view the image
+    // shoulder width collapses as the shoulders rotate at the top of the swing.
+    // The scale is EMA-smoothed while the player stands still and FROZEN once
+    // the swing starts — camera and golfer distance don't change mid-swing.
+    const imTorso = dist2(shoulderMidIm, hipMidIm);
+    if (imTorso > 0.02 && (this.phase === PHASE.IDLE || this.phase === PHASE.ADDRESS)) {
+      const rawScale = dist3(shoulderMidW, hipMidW) / imTorso;
+      this.scale = this.scale === null ? rawScale : 0.8 * this.scale + 0.2 * rawScale;
+    }
+    const scale = this.scale ?? 1;
+
+    const sample = {
+      t,
+      wristMidW,
+      // Absolute wrist position ≈ hip-relative world position + body translation
+      // measured in image space and scaled to metres.
+      wristAbs: {
+        x: wristMidW.x + hipMidIm.x * scale,
+        y: wristMidW.y + hipMidIm.y * scale,
+        z: wristMidW.z,
+      },
+      shoulderRot: horizontalRotation(w[LM.L_SHOULDER], w[LM.R_SHOULDER]),
+      hipRot: horizontalRotation(w[LM.L_HIP], w[LM.R_HIP]),
+      headX: im[LM.NOSE].x * scale,
+      headY: im[LM.NOSE].y * scale,
+      hipX: hipMidIm.x * scale,
+      leadElbow: jointAngle(w[this.lead.shoulder], w[this.lead.elbow], w[this.lead.wrist]),
+      wristRadius: dist3(shoulderMidW, wristMidW),
+      kneeFlex:
+        180 -
+        (jointAngle(w[LM.L_HIP], w[LM.L_KNEE], w[LM.L_ANKLE]) +
+          jointAngle(w[LM.R_HIP], w[LM.R_KNEE], w[LM.R_ANKLE])) /
+          2,
+      wristAboveHead: im[LM.L_WRIST].y < im[LM.NOSE].y || im[LM.R_WRIST].y < im[LM.NOSE].y,
+      handsBelowHips: mid(im[LM.L_WRIST], im[LM.R_WRIST]).y > hipMidIm.y,
+      handsTogether: dist3(w[LM.L_WRIST], w[LM.R_WRIST]) < 0.22,
+      visibility: Math.min(
+        im[LM.L_SHOULDER].visibility, im[LM.R_SHOULDER].visibility,
+        im[LM.L_WRIST].visibility, im[LM.R_WRIST].visibility,
+        im[LM.L_HIP].visibility, im[LM.R_HIP].visibility
+      ),
+      speed: 0,
+      vertVel: 0,
+    };
+
+    // Velocities via central difference over the last 3 samples.
+    const n = this.samples.length;
+    if (n >= 2) {
+      const prev = this.samples[n - 2];
+      const dt = t - prev.t;
+      if (dt > 1e-3) {
+        sample.speed = dist3(sample.wristAbs, prev.wristAbs) / dt;
+        sample.vertVel = -(sample.wristAbs.y - prev.wristAbs.y) / dt; // +up (image y is down)
+      }
+    }
+
+    this.samples.push(sample);
+    if (this.samples.length > 400) this.samples.shift();
+
+    this.step(sample, t);
+    return { phase: this.phase, handSpeed: sample.speed, result: this.consumeResult() };
+  }
+
+  consumeResult() {
+    const r = this.result;
+    this.result = null;
+    return r;
+  }
+
+  step(s, t) {
+    switch (this.phase) {
+      case PHASE.IDLE: {
+        if (t < this.cooldownUntil) break;
+        const ready =
+          s.visibility > 0.5 && s.handsBelowHips && s.handsTogether && s.speed < 0.9;
+        if (ready) {
+          if (this.stillSince === null) this.stillSince = t;
+          if (t - this.stillSince > 0.4) {
+            this.address = {
+              t,
+              wristAbs: { ...s.wristAbs },
+              shoulderRot: s.shoulderRot,
+              hipRot: s.hipRot,
+              headX: s.headX,
+              headY: s.headY,
+              hipX: s.hipX,
+              kneeFlex: s.kneeFlex,
+            };
+            this.phase = PHASE.ADDRESS;
+            this.phaseStart = t;
+          }
+        } else {
+          this.stillSince = null;
+        }
+        break;
+      }
+
+      case PHASE.ADDRESS: {
+        if (s.visibility < 0.35) { this.softReset(t); break; }
+        // Keep the address baseline fresh while the player is still.
+        if (s.speed < 0.5) {
+          this.address.wristAbs = { ...s.wristAbs };
+          this.address.shoulderRot = s.shoulderRot;
+          this.address.hipRot = s.hipRot;
+          this.address.headX = s.headX;
+          this.address.headY = s.headY;
+          this.address.hipX = s.hipX;
+          this.address.kneeFlex = s.kneeFlex;
+        }
+        const rising = -(s.wristAbs.y - this.address.wristAbs.y); // metres, +up
+        if (s.speed > 1.1 && rising > 0.06) {
+          this.phase = PHASE.BACKSWING;
+          this.phaseStart = t;
+          this.tBackswing = t;
+          this.maxHandRise = 0;
+          this.backswingHeadSway = 0;
+          this.backswingHipSway = 0;
+          this.backswingDx = 0;
+        }
+        break;
+      }
+
+      case PHASE.BACKSWING: {
+        const rise = -(s.wristAbs.y - this.address.wristAbs.y);
+        this.maxHandRise = Math.max(this.maxHandRise, rise);
+        this.backswingDx += s.wristAbs.x - this.samples[this.samples.length - 2].wristAbs.x;
+        // Signed sways are resolved against target direction at TOP.
+        this.backswingHeadSway = s.headX - this.address.headX;
+        this.backswingHipSway = s.hipX - this.address.hipX;
+
+        // False start: hands sank back down slowly.
+        if (t - this.phaseStart > 2.5 && this.maxHandRise < 0.15) { this.softReset(t); break; }
+        if (t - this.phaseStart > 3.5) { this.softReset(t); break; }
+
+        // Top: hands were carried up, vertical velocity turns downward.
+        if (this.maxHandRise > 0.25 && s.vertVel < -0.15) {
+          // Hands moved toward the trail side during backswing → target is opposite.
+          this.targetDir = this.backswingDx > 0 ? -1 : 1;
+          this.tTop = t;
+          this.topSample = s;
+          this.phase = PHASE.DOWNSWING;
+          this.phaseStart = t;
+          this.peakSpeed = 0;
+          this.tPeakSpeed = t;
+          this.downswingRadiusSum = 0;
+          this.downswingRadiusN = 0;
+        }
+        break;
+      }
+
+      case PHASE.DOWNSWING: {
+        if (s.speed > this.peakSpeed) {
+          this.peakSpeed = s.speed;
+          this.tPeakSpeed = s.t;
+        }
+        this.downswingRadiusSum += s.wristRadius;
+        this.downswingRadiusN += 1;
+
+        const heightAboveAddress = -(s.wristAbs.y - this.address.wristAbs.y);
+        // Impact: hands back down to address height with real speed.
+        if (heightAboveAddress < 0.15 && s.speed > 2.0) {
+          this.tImpact = t;
+          this.impactSample = s;
+          this.phase = PHASE.FINISH;
+          this.phaseStart = t;
+        }
+        if (t - this.phaseStart > 1.2) { this.softReset(t); break; } // stalled — not a swing
+        break;
+      }
+
+      case PHASE.FINISH: {
+        if (t - this.phaseStart > 0.7) {
+          this.finalize();
+          this.phase = PHASE.IDLE;
+          this.cooldownUntil = t + 2.0;
+          this.stillSince = null;
+        }
+        break;
+      }
+    }
+  }
+
+  softReset(t) {
+    this.phase = PHASE.IDLE;
+    this.stillSince = null;
+    this.cooldownUntil = t + 0.5;
+  }
+
+  /** 3-point parabolic refinement of the peak hand speed around the sampled max. */
+  refinedPeakSpeed() {
+    const idx = this.samples.findIndex((s) => s.t === this.tPeakSpeed);
+    if (idx <= 0 || idx >= this.samples.length - 1) return this.peakSpeed;
+    const y0 = this.samples[idx - 1].speed;
+    const y1 = this.samples[idx].speed;
+    const y2 = this.samples[idx + 1].speed;
+    const denom = y0 - 2 * y1 + y2;
+    if (Math.abs(denom) < 1e-9 || denom > 0) return y1;
+    const delta = (0.5 * (y0 - y2)) / denom;
+    return y1 - 0.25 * (y0 - y2) * delta; // vertex of the fitted parabola
+  }
+
+  /**
+   * @param {number} clubLengthM
+   * @returns {number} clubhead speed estimate, m/s
+   */
+  estimateClubheadSpeed(clubLengthM) {
+    const vHand = this.refinedPeakSpeed();
+    const rWrist = Math.min(
+      0.75,
+      Math.max(0.45, this.downswingRadiusN ? this.downswingRadiusSum / this.downswingRadiusN : 0.6)
+    );
+    const leverRatio = (rWrist + 0.95 * clubLengthM) / rWrist;
+    const chs = vHand * leverRatio * RELEASE_GAIN * this.speedCalibration;
+    return Math.min(67, Math.max(8, chs)); // clamp to 18–150 mph sanity range
+  }
+
+  finalize() {
+    const a = this.address;
+    const top = this.topSample;
+    const imp = this.impactSample;
+    const dir = this.targetDir || 1;
+
+    const shoulderTurn = Math.abs(unwrapNear(top.shoulderRot, a.shoulderRot) - a.shoulderRot);
+    const hipTurn = Math.abs(unwrapNear(top.hipRot, a.hipRot) - a.hipRot);
+    const backswingS = this.tTop - this.tBackswing;
+    const downswingS = this.tImpact - this.tTop;
+
+    this.result = {
+      timestamp: this.tImpact,
+      peakHandSpeed: this.refinedPeakSpeed(),
+      backswingS,
+      downswingS,
+      tempoRatio: downswingS > 0.02 ? backswingS / downswingS : 0,
+      shoulderTurn,
+      hipTurn,
+      xFactor: Math.abs(shoulderTurn - hipTurn),
+      leadArmFlexTop: 180 - top.leadElbow,
+      leadElbowImpact: imp.leadElbow,
+      // Signed toward-target displacements (m): + means toward the target.
+      headSwayTarget: (top.headX - a.headX) * dir,
+      hipSwayAway: (top.hipX - a.hipX) * -dir,
+      headRise: -(imp.headY - a.headY), // + means head came UP from address→impact
+      kneeFlexAddress: a.kneeFlex,
+      overswing: top.wristAboveHead,
+      // Deceleration: peak hand speed should arrive close to impact.
+      peakToImpactMs: (this.tImpact - this.tPeakSpeed) * 1000,
+      maxHandRise: this.maxHandRise,
+    };
+  }
+}
+
+/* ── js/advice.js ───────────────────────────────────────── */
+/**
+ * Swing-fault detection & coaching advice.
+ *
+ * Every rule compares a measured biomechanical quantity against target
+ * bands taken from the golf-science literature and tour motion-capture
+ * norms (sources noted per rule). Severity feeds the swing score.
+ *
+ * severity: 'good' | 'info' | 'minor' | 'major'
+ */
+
+const fmt = {
+  deg: (v) => `${v.toFixed(0)}°`,
+  ratio: (v) => `${v.toFixed(1)} : 1`,
+  cm: (v) => `${(v * 100).toFixed(0)} cm`,
+  ms: (v) => `${v.toFixed(0)} ms`,
+};
+
+function evaluateSwing(m) {
+  const findings = [];
+  const add = (f) => findings.push(f);
+
+  // ── Tempo ─────────────────────────────────────────────────────────────
+  if (m.tempoRatio > 0) {
+    const t = m.tempoRatio;
+    if (t >= 2.6 && t <= 3.4) {
+      add({
+        id: 'tempo', severity: 'good', title: 'Tour-grade tempo',
+        measured: fmt.ratio(t), target: '3.0 : 1',
+        detail: `Your backswing-to-downswing time ratio is ${fmt.ratio(t)} — right in the elite window. Frame-count studies of tour players (Novosel & Garrity, "Tour Tempo", 2004) found nearly all cluster at 3:1 regardless of swing length.`,
+      });
+    } else if (t > 3.4) {
+      add({
+        id: 'tempo', severity: 'minor', title: 'Backswing drags relative to downswing',
+        measured: fmt.ratio(t), target: '2.6–3.4 : 1',
+        detail: 'A very slow takeaway relative to the strike disrupts the stretch-shorten cycle in the trunk musculature and usually costs sequencing, not just speed.',
+        drill: 'Count "one-two-three" up, "one" down — or swing to a 3:1 metronome app. Feel the club "fall" from the top rather than being placed.',
+      });
+    } else {
+      add({
+        id: 'tempo', severity: t < 2.0 ? 'major' : 'minor', title: 'Swing is rushed from the top',
+        measured: fmt.ratio(t), target: '2.6–3.4 : 1',
+        detail: 'Snatching the club down early fires the arms before the lower body can lead the kinematic sequence (pelvis → torso → arms → club), which is where efficient speed comes from.',
+        drill: 'Pause drill: swing to the top, hold a full one-second pause, then swing through. The ball should still go 90% as far — proof the top-of-swing rush adds nothing.',
+      });
+    }
+  }
+
+  // ── X-Factor (shoulder–pelvis separation at the top) ──────────────────
+  if (isFinite(m.xFactor)) {
+    const x = m.xFactor;
+    if (x >= 32 && x <= 60) {
+      add({
+        id: 'xfactor', severity: 'good', title: 'Strong coil (X-Factor)',
+        measured: fmt.deg(x), target: '35–55°',
+        detail: `Shoulder–pelvis separation of ${fmt.deg(x)} at the top. Motion-capture studies (McLean 1992; Myers et al., J Sports Sci 2008) show this separation correlates directly with ball speed.`,
+      });
+    } else if (x < 32) {
+      add({
+        id: 'xfactor', severity: x < 22 ? 'major' : 'minor', title: 'Limited shoulder–hip coil',
+        measured: fmt.deg(x), target: '35–55°',
+        detail: 'Your shoulders and hips are turning together, so little elastic energy is stored in the trunk. This is the most common amateur power leak (Myers et al. 2008 found higher X-Factor in high-ball-speed groups).',
+        drill: 'Cross-arm turns: club across your chest, turn your shoulders fully while resisting with the trail knee — feel the stretch across your lead side. Then rebuild the backswing keeping the lower half quieter.',
+      });
+    } else {
+      add({
+        id: 'xfactor', severity: 'info', title: 'Very large X-Factor',
+        measured: fmt.deg(x), target: '35–55°',
+        detail: 'Separation beyond ~60° can exceed comfortable spinal rotation for many players and is associated with higher lumbar load. If you have the mobility of a tour pro, carry on — otherwise let the hips turn a touch more.',
+      });
+    }
+  }
+
+  // ── Lead arm at the top ───────────────────────────────────────────────
+  if (isFinite(m.leadArmFlexTop)) {
+    const flex = m.leadArmFlexTop;
+    if (flex <= 25) {
+      add({
+        id: 'leadarm', severity: 'good', title: 'Lead arm stays long',
+        measured: `${fmt.deg(flex)} bend`, target: '< 25° bend',
+        detail: 'A long (not rigid) lead arm at the top maintains swing radius — and clubhead speed scales directly with radius at a given angular velocity.',
+      });
+    } else if (flex > 35) {
+      add({
+        id: 'leadarm', severity: 'major', title: 'Lead arm collapses at the top',
+        measured: `${fmt.deg(flex)} bend`, target: '< 25° bend',
+        detail: 'A collapsed lead elbow shrinks the swing arc, costing speed, and forces a compensating re-extension on the way down that ruins low-point control.',
+        drill: 'Shorten the backswing until the lead arm stays comfortably extended — a shorter swing with structure outdrives a long collapsed one. Towel-under-both-armpits drill keeps arms and chest connected.',
+      });
+    } else {
+      add({
+        id: 'leadarm', severity: 'minor', title: 'Lead arm softens at the top',
+        measured: `${fmt.deg(flex)} bend`, target: '< 25° bend',
+        detail: 'Some bend is fine (many long drivers have a few degrees), but past ~25° the arc starts shrinking measurably.',
+        drill: 'Feel "wide hands" at the top — push the grip away from your trail shoulder as you complete the turn.',
+      });
+    }
+  }
+
+  // ── Head sway (backswing) ─────────────────────────────────────────────
+  if (isFinite(m.headSwayTarget)) {
+    const sway = Math.abs(m.headSwayTarget);
+    const towardTarget = m.headSwayTarget > 0;
+    if (towardTarget && m.headSwayTarget > 0.05) {
+      add({
+        id: 'headsway', severity: 'major', title: 'Reverse-pivot pattern',
+        measured: `${fmt.cm(m.headSwayTarget)} toward target`, target: 'stable or slightly away',
+        detail: 'Your head moved toward the target during the backswing — the classic reverse-pivot signature. Weight ends up on the lead side at the top, then falls backward through impact, costing speed and producing thin/fat strikes.',
+        drill: 'Feel your trail hip turn "into" a wall behind you as pressure loads into the trail heel during the backswing. Step-through drills exaggerate the correct weight flow.',
+      });
+    } else if (sway > 0.12) {
+      add({
+        id: 'headsway', severity: 'minor', title: 'Excessive head movement',
+        measured: fmt.cm(sway), target: '< 10 cm',
+        detail: 'Tour players keep the head within roughly a ball-width of its address position during the backswing; large lateral drift moves the swing low point and makes contact a timing exercise.',
+        drill: 'Shadow drill: swing with the sun (or a lamp) casting your head-shadow on a spot — keep the shadow inside a small circle to the top.',
+      });
+    } else {
+      add({
+        id: 'headsway', severity: 'good', title: 'Quiet head',
+        measured: fmt.cm(sway), target: '< 10 cm',
+        detail: 'Your head stays centred through the backswing, which keeps the swing low point predictable — the foundation of consistent strikes.',
+      });
+    }
+  }
+
+  // ── Hip sway (backswing) ──────────────────────────────────────────────
+  if (isFinite(m.hipSwayAway) && m.hipSwayAway > 0.10) {
+    add({
+      id: 'hipsway', severity: 'minor', title: 'Hips slide instead of turning',
+      measured: `${fmt.cm(m.hipSwayAway)} away from target`, target: '< 10 cm',
+      detail: 'Lateral pelvis slide in the backswing (sway) replaces rotation with translation — pressure gets stuck on the outside of the trail foot and the downswing sequence starts from a dead position.',
+      drill: 'Place an alignment stick (or bag stand) just outside your trail hip at address; turn the hip clear of it rather than bumping into it.',
+    });
+  }
+
+  // ── Standing up through impact ────────────────────────────────────────
+  if (isFinite(m.headRise)) {
+    if (m.headRise > 0.09) {
+      add({
+        id: 'posture', severity: 'major', title: 'Early extension / standing up',
+        measured: `head up ${fmt.cm(m.headRise)} by impact`, target: '< 7 cm',
+        detail: 'You rise out of your posture in the downswing. GEARS/TPI screening data finds early extension in a majority of amateurs and almost no tour players — it forces the arms to save the strike and blocks the hips from rotating through.',
+        drill: 'Chair drill: set up with your glutes brushing a chair/wall and keep contact into impact. Also try hitting balls with your lead foot slightly flared and feeling the chest stay "down and turning" through the ball.',
+      });
+    } else if (m.headRise > 0.06) {
+      add({
+        id: 'posture', severity: 'minor', title: 'Slight loss of posture',
+        measured: `head up ${fmt.cm(m.headRise)} by impact`, target: '< 7 cm',
+        detail: 'A small rise through the hitting area — worth monitoring before it grows into full early extension.',
+        drill: 'Rehearse slow-motion downswings keeping your belt buckle the same distance from the ball line.',
+      });
+    } else {
+      add({
+        id: 'posture', severity: 'good', title: 'Posture maintained into impact',
+        measured: `head moved ${fmt.cm(Math.max(0, m.headRise))}`, target: '< 7 cm',
+        detail: 'You stay in your spine angle through the strike — the pattern that separates tour impact positions from amateur ones.',
+      });
+    }
+  }
+
+  // ── Chicken wing at impact ────────────────────────────────────────────
+  if (isFinite(m.leadElbowImpact) && m.leadElbowImpact < 145) {
+    add({
+      id: 'chickenwing', severity: 'minor', title: 'Lead elbow bent through impact',
+      measured: `${fmt.deg(180 - m.leadElbowImpact)} bend at impact`, target: '< 35°',
+      detail: 'A buckling lead elbow ("chicken wing") at impact shortens the arc exactly when radius matters most and usually indicates an over-the-top path or fear of turning through.',
+      drill: 'Split-hand drill: grip with hands separated a few centimetres and swing half-speed — the lead arm must stay long to square the face.',
+    });
+  }
+
+  // ── Overswing ─────────────────────────────────────────────────────────
+  if (m.overswing) {
+    add({
+      id: 'overswing', severity: 'info', title: 'Long backswing',
+      measured: 'hands above head at top', target: 'compact top position',
+      detail: 'Hands travelling above head height often means the club is past parallel. Unless you have exceptional flexibility, length past parallel usually comes from collapsing structure rather than extra turn — check the lead-arm reading above.',
+    });
+  }
+
+  // ── Casting / deceleration ────────────────────────────────────────────
+  if (isFinite(m.peakToImpactMs)) {
+    if (m.peakToImpactMs > 140) {
+      add({
+        id: 'release', severity: 'major', title: 'Early release — speed peaks too soon',
+        measured: `hands peaked ${fmt.ms(m.peakToImpactMs)} before impact`, target: '< 120 ms',
+        detail: 'Your hands hit maximum speed well before the ball. Efficient swings transfer hand momentum into the clubhead *at* impact (the parametric-acceleration effect — hands actually slow just before the strike as energy flows down the chain; Nesbit & Serrano 2005). Peaking early means the whip cracked behind the ball.',
+        drill: 'Impact-bag or towel-whip drill: make the "whoosh" happen past the ball position, not at the top of the downswing. Hold the wrist angle until the hands pass the trail thigh.',
+      });
+    } else {
+      add({
+        id: 'release', severity: 'good', title: 'Well-timed release',
+        measured: `hands peaked ${fmt.ms(Math.max(0, m.peakToImpactMs))} before impact`, target: '< 120 ms',
+        detail: 'Hand speed peaks close to the strike, so stored wrist-cock energy is being delivered to the clubhead at the right moment.',
+      });
+    }
+  }
+
+  // ── Knee flex at address ──────────────────────────────────────────────
+  if (isFinite(m.kneeFlexAddress)) {
+    if (m.kneeFlexAddress < 8) {
+      add({
+        id: 'knees', severity: 'info', title: 'Legs very straight at address',
+        measured: fmt.deg(m.kneeFlexAddress), target: '≈ 15–25°',
+        detail: 'Athletic knee flex at setup lets the lower body drive the downswing; straight knees encourage an all-arms action.',
+      });
+    } else if (m.kneeFlexAddress > 35) {
+      add({
+        id: 'knees', severity: 'info', title: 'Deep knee bend at address',
+        measured: fmt.deg(m.kneeFlexAddress), target: '≈ 15–25°',
+        detail: 'Sitting very low at address tends to force a stand-up move through impact to create room.',
+      });
+    }
+  }
+
+  // Sort: problems first (major → minor → info), then positives.
+  const order = { major: 0, minor: 1, info: 2, good: 3 };
+  findings.sort((a, b) => order[a.severity] - order[b.severity]);
+
+  // Swing score.
+  let score = 100;
+  for (const f of findings) {
+    if (f.severity === 'major') score -= 14;
+    else if (f.severity === 'minor') score -= 7;
+    else if (f.severity === 'info') score -= 2;
+  }
+  score = Math.max(35, score);
+
+  return { findings, score };
+}
+
+/* ── js/trajectory.js ───────────────────────────────────────── */
+/**
+ * Side-view ball-flight chart on <canvas>, with an animated replay.
+ * Styling follows the app's chart tokens (see style.css :root).
+ */
+
+
+
+const COLORS = {
+  surface: '#1a1a19',
+  grid: '#2c2c2a',
+  baseline: '#383835',
+  muted: '#898781',
+  ink: '#ffffff',
+  inkSecondary: '#c3c2b7',
+  series: '#3987e5',
+  seriesWash: 'rgba(57, 135, 229, 0.10)',
+};
+
+class TrajectoryView {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.flight = null;
+    this.units = 'yd';
+    this.animStart = 0;
+    this.raf = null;
+    this.resize();
+  }
+
+  resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = this.canvas.getBoundingClientRect();
+    if (rect.width === 0) return;
+    this.canvas.width = Math.round(rect.width * dpr);
+    this.canvas.height = Math.round(rect.height * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.w = rect.width;
+    this.h = rect.height;
+    this.draw(this.flight ? 1 : 0);
+  }
+
+  setUnits(units) {
+    this.units = units;
+    this.draw(this.flight ? 1 : 0);
+  }
+
+  show(flight) {
+    this.flight = flight;
+    // The canvas may have been display:none (zero-width) when constructed —
+    // re-measure now that the results panel is visible.
+    this.resize();
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.animStart = performance.now();
+    const animate = (now) => {
+      // Replay at 2x real time.
+      const progress = Math.min(1, ((now - this.animStart) / 1000) * 2 / flight.flightTimeS);
+      this.draw(progress);
+      if (progress < 1) this.raf = requestAnimationFrame(animate);
+    };
+    this.raf = requestAnimationFrame(animate);
+  }
+
+  toUnit(m) {
+    return this.units === 'yd' ? m * M_TO_YD : m;
+  }
+
+  draw(progress = 0) {
+    const { ctx, w, h } = this;
+    if (!w) return;
+    ctx.clearRect(0, 0, w, h);
+
+    const padL = 10, padR = 16, padT = 18, padB = 24;
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+
+    // Scale: keep x/y proportional-ish but prioritize fitting the carry.
+    const maxX = this.flight ? Math.max(50, this.flight.totalM * 1.06) : 250;
+    const maxY = this.flight ? Math.max(20, this.flight.apexM * 1.8) : 60;
+    const sx = plotW / maxX;
+    const sy = plotH / maxY;
+    const X = (m) => padL + m * sx;
+    const Y = (m) => padT + plotH - m * sy;
+
+    // Distance gridlines (hairline, recessive) every 50 yd / m.
+    const unitPerM = this.units === 'yd' ? M_TO_YD : 1;
+    const stepU = maxX * unitPerM > 320 ? 100 : 50;
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = 1;
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = '11px system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    for (let u = stepU; u <= maxX * unitPerM; u += stepU) {
+      const xPix = X(u / unitPerM);
+      ctx.beginPath();
+      ctx.moveTo(xPix, padT);
+      ctx.lineTo(xPix, padT + plotH);
+      ctx.stroke();
+      ctx.fillText(`${u}`, xPix, h - 8);
+    }
+    ctx.textAlign = 'left';
+    ctx.fillText(this.units === 'yd' ? 'yards' : 'metres', padL, h - 8);
+
+    // Ground baseline.
+    ctx.strokeStyle = COLORS.baseline;
+    ctx.beginPath();
+    ctx.moveTo(padL, Y(0) + 0.5);
+    ctx.lineTo(w - padR, Y(0) + 0.5);
+    ctx.stroke();
+
+    if (!this.flight) {
+      ctx.fillStyle = COLORS.muted;
+      ctx.textAlign = 'center';
+      ctx.fillText('Swing to see your ball flight', w / 2, h / 2);
+      ctx.textAlign = 'left';
+      return;
+    }
+
+    const pts = this.flight.points;
+    const lastIdx = Math.max(1, Math.floor(progress * (pts.length - 1)));
+
+    // Area wash under the flown portion.
+    ctx.beginPath();
+    ctx.moveTo(X(0), Y(0));
+    for (let i = 0; i <= lastIdx; i++) ctx.lineTo(X(pts[i].x), Y(pts[i].y));
+    ctx.lineTo(X(pts[lastIdx].x), Y(0));
+    ctx.closePath();
+    ctx.fillStyle = COLORS.seriesWash;
+    ctx.fill();
+
+    // Flight path: 2px line, round joins.
+    ctx.beginPath();
+    ctx.moveTo(X(pts[0].x), Y(pts[0].y));
+    for (let i = 1; i <= lastIdx; i++) ctx.lineTo(X(pts[i].x), Y(pts[i].y));
+    ctx.strokeStyle = COLORS.series;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Ball marker with surface ring.
+    const ball = pts[lastIdx];
+    ctx.beginPath();
+    ctx.arc(X(ball.x), Y(ball.y), 6, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.surface;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(X(ball.x), Y(ball.y), 4, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.series;
+    ctx.fill();
+
+    if (progress >= 1) {
+      // Roll segment (secondary treatment — muted, thinner).
+      if (this.flight.rollM > 0.5) {
+        ctx.beginPath();
+        ctx.moveTo(X(this.flight.carryM), Y(0));
+        ctx.lineTo(X(this.flight.totalM), Y(0));
+        ctx.strokeStyle = COLORS.muted;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Apex marker + direct label (text tokens, never series color).
+      const apexPt = pts.reduce((a, b) => (b.y > a.y ? b : a));
+      ctx.beginPath();
+      ctx.arc(X(apexPt.x), Y(apexPt.y), 5, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS.surface;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(X(apexPt.x), Y(apexPt.y), 3, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS.series;
+      ctx.fill();
+      ctx.fillStyle = COLORS.inkSecondary;
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        `apex ${this.toUnit(this.flight.apexM).toFixed(0)} ${this.units}`,
+        X(apexPt.x),
+        Y(apexPt.y) - 10
+      );
+
+      // Carry label at the landing point.
+      ctx.fillStyle = COLORS.ink;
+      ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", sans-serif';
+      const carryX = Math.min(X(this.flight.carryM), w - padR - 30);
+      ctx.fillText(`${this.toUnit(this.flight.carryM).toFixed(0)} ${this.units}`, carryX, Y(0) - 8);
+      ctx.textAlign = 'left';
+    }
+  }
+}
+
+/* ── js/main.js ───────────────────────────────────────── */
+/**
+ * SwingLab — application orchestration.
+ *
+ * Camera → MediaPipe PoseLandmarker (VIDEO mode, GPU) → SwingAnalyzer →
+ * club model → ball-flight physics → results UI.
+ */
+
+
+
+
+
+
+
+const MEDIAPIPE_VERSION = '0.10.14';
+// CDN fallback chain. The explicit vision_bundle.mjs path matters: the
+// package's "main" is the CJS bundle, which a bare package-root import
+// may resolve to and then fail as an ES module.
+const CDN_BASES = [
+  `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}`,
+  `https://unpkg.com/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}`,
+];
+const MODEL_URL =
+  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task';
+
+const $ = (sel) => document.querySelector(sel);
+
+const state = {
+  landmarker: null,
+  running: false,
+  mode: null, // 'camera' | 'video'
+  analyzer: null,
+  trajectory: null,
+  units: 'yd', // 'yd' | 'm'
+  lastVideoTime: -1,
+  swingCount: 0,
+  history: [],
+};
+
+// Skeleton connections we draw (torso + arms + legs).
+const BONES = [
+  [LM.L_SHOULDER, LM.R_SHOULDER], [LM.L_HIP, LM.R_HIP],
+  [LM.L_SHOULDER, LM.L_HIP], [LM.R_SHOULDER, LM.R_HIP],
+  [LM.L_SHOULDER, LM.L_ELBOW], [LM.L_ELBOW, LM.L_WRIST],
+  [LM.R_SHOULDER, LM.R_ELBOW], [LM.R_ELBOW, LM.R_WRIST],
+  [LM.L_HIP, LM.L_KNEE], [LM.L_KNEE, LM.L_ANKLE],
+  [LM.R_HIP, LM.R_KNEE], [LM.R_KNEE, LM.R_ANKLE],
+];
+
+const PHASE_LABEL = {
+  [PHASE.IDLE]: 'Waiting for address…',
+  [PHASE.ADDRESS]: 'Address — ready',
+  [PHASE.BACKSWING]: 'Backswing',
+  [PHASE.TOP]: 'Top',
+  [PHASE.DOWNSWING]: 'Downswing',
+  [PHASE.IMPACT]: 'Impact',
+  [PHASE.FINISH]: 'Finish',
+  [PHASE.DONE]: 'Done',
+};
+
+function toSpeedUnit(mps) {
+  return state.units === 'yd' ? mps * MPS_TO_MPH : mps * 3.6;
+}
+const speedUnitLabel = () => (state.units === 'yd' ? 'mph' : 'km/h');
+function toDistUnit(m) {
+  return state.units === 'yd' ? m * M_TO_YD : m;
+}
+const distUnitLabel = () => state.units;
+
+// ── Setup ────────────────────────────────────────────────────────────────
+
+async function loadModel() {
+  const status = $('#loadStatus');
+  status.textContent = 'Loading pose model…';
+  let lastErr = null;
+  for (const base of CDN_BASES) {
+    try {
+      const vision = await import(`${base}/vision_bundle.mjs`);
+      const fileset = await vision.FilesetResolver.forVisionTasks(`${base}/wasm`);
+      const options = (delegate) => ({
+        baseOptions: { modelAssetPath: MODEL_URL, delegate },
+        runningMode: 'VIDEO',
+        numPoses: 1,
+        minPoseDetectionConfidence: 0.5,
+        minPosePresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+      try {
+        state.landmarker = await vision.PoseLandmarker.createFromOptions(fileset, options('GPU'));
+      } catch {
+        // No usable WebGL — CPU inference is slower but works everywhere.
+        state.landmarker = await vision.PoseLandmarker.createFromOptions(fileset, options('CPU'));
+      }
+      status.textContent = '';
+      return;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+function buildClubSelect() {
+  const sel = $('#clubSelect');
+  for (const c of CLUBS) {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    sel.appendChild(opt);
+  }
+  sel.value = 'driver';
+  sel.addEventListener('change', updateClubInfo);
+  updateClubInfo();
+}
+
+function updateClubInfo() {
+  const c = getClub($('#clubSelect').value);
+  $('#clubInfo').textContent = `${c.loftDeg}° loft · ${(c.lengthM * 39.37).toFixed(1)}" · smash ${c.smash}`;
+}
+
+function makeAnalyzer() {
+  state.analyzer = new SwingAnalyzer({
+    handedness: $('#handedness').value,
+    speedCalibration: parseFloat($('#calibration').value),
+  });
+}
+
+// ── Video / camera plumbing ──────────────────────────────────────────────
+
+async function startCamera() {
+  const video = $('#video');
+  stopVideoFile();
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('camera access is not available in this environment');
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'environment',
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 60, min: 24 },
+      },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await video.play();
+    state.mode = 'camera';
+    beginSession();
+  } catch (err) {
+    $('#loadStatus').textContent =
+      'Camera unavailable: ' + err.message +
+      ' — use Range mode below, or run the app locally for live tracking.';
+  }
+}
+
+function stopVideoFile() {
+  const video = $('#video');
+  if (video.src && video.src.startsWith('blob:')) URL.revokeObjectURL(video.src);
+  video.removeAttribute('src');
+}
+
+function stopCamera() {
+  const video = $('#video');
+  if (video.srcObject) {
+    for (const track of video.srcObject.getTracks()) track.stop();
+    video.srcObject = null;
+  }
+}
+
+async function loadVideoFile(file) {
+  stopCamera();
+  stopVideoFile();
+  const video = $('#video');
+  video.src = URL.createObjectURL(file);
+  video.loop = false;
+  video.muted = true;
+  await video.play();
+  state.mode = 'video';
+  beginSession();
+}
+
+function beginSession() {
+  $('#startOverlay').classList.add('hidden');
+  $('#stage').classList.remove('hidden');
+  makeAnalyzer();
+  if (!state.running) {
+    state.running = true;
+    scheduleFrame();
+  }
+  fitOverlay();
+}
+
+function fitOverlay() {
+  const video = $('#video');
+  const canvas = $('#overlay');
+  canvas.width = video.videoWidth || 1280;
+  canvas.height = video.videoHeight || 720;
+}
+
+function scheduleFrame() {
+  const video = $('#video');
+  if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+    video.requestVideoFrameCallback(() => frame());
+  } else {
+    requestAnimationFrame(() => frame());
+  }
+}
+
+function frame() {
+  if (!state.running) return;
+  const video = $('#video');
+  if (video.readyState >= 2 && video.videoWidth > 0) {
+    if (canvasNeedsResize(video)) fitOverlay();
+    const tMs = performance.now();
+    if (video.currentTime !== state.lastVideoTime) {
+      state.lastVideoTime = video.currentTime;
+      let res;
+      try {
+        res = state.landmarker.detectForVideo(video, Math.round(tMs));
+      } catch (e) {
+        res = null;
+      }
+      handleResult(res, state.mode === 'video' ? video.currentTime : tMs / 1000);
+    }
+  }
+  scheduleFrame();
+}
+
+function canvasNeedsResize(video) {
+  const canvas = $('#overlay');
+  return canvas.width !== video.videoWidth || canvas.height !== video.videoHeight;
+}
+
+// ── Per-frame handling ───────────────────────────────────────────────────
+
+function handleResult(res, tSec) {
+  const canvas = $('#overlay');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const has = res && res.landmarks && res.landmarks.length > 0;
+  if (!has) {
+    setPhaseBadge('No golfer detected', 'idle');
+    return;
+  }
+
+  drawSkeleton(ctx, res.landmarks[0], canvas.width, canvas.height);
+
+  const { phase, handSpeed, result } = state.analyzer.update(
+    tSec,
+    res.worldLandmarks[0],
+    res.landmarks[0]
+  );
+
+  setPhaseBadge(PHASE_LABEL[phase] || phase, phase);
+  $('#liveSpeed').textContent =
+    handSpeed > 0.5 ? `hands ${toSpeedUnit(handSpeed).toFixed(0)} ${speedUnitLabel()}` : '';
+
+  if (result) onSwingComplete(result);
+}
+
+function drawSkeleton(ctx, lms, w, h) {
+  ctx.strokeStyle = 'rgba(57, 135, 229, 0.9)';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  for (const [a, b] of BONES) {
+    const pa = lms[a], pb = lms[b];
+    if (!pa || !pb || (pa.visibility ?? 1) < 0.4 || (pb.visibility ?? 1) < 0.4) continue;
+    ctx.beginPath();
+    ctx.moveTo(pa.x * w, pa.y * h);
+    ctx.lineTo(pb.x * w, pb.y * h);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#ffffff';
+  for (const i of [LM.L_WRIST, LM.R_WRIST]) {
+    const p = lms[i];
+    if (!p || (p.visibility ?? 1) < 0.4) continue;
+    ctx.beginPath();
+    ctx.arc(p.x * w, p.y * h, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function setPhaseBadge(label, phase) {
+  const el = $('#phaseBadge');
+  el.textContent = label;
+  el.dataset.phase = phase;
+}
+
+// ── Swing completion → physics → UI ─────────────────────────────────────
+
+function currentAirDensity() {
+  return airDensity(
+    parseFloat($('#temperature').value) || 20,
+    parseFloat($('#altitude').value) || 0
+  );
+}
+
+/** Range mode: physics-only shot from a chosen clubhead speed (no camera). */
+function simulateRangeShot() {
+  const club = getClub($('#clubSelect').value);
+  const chsMps = parseFloat($('#rangeSpeed').value) * MPH_TO_MPS;
+  const launch = launchConditions(club, chsMps);
+  const flight = simulateFlight({ ...launch, rho: currentAirDensity() });
+
+  state.swingCount += 1;
+  state.history.unshift({
+    n: state.swingCount, club, chsMps, launch, flight, metrics: null, review: null,
+  });
+  if (state.history.length > 20) state.history.pop();
+  renderResults(state.history[0]);
+}
+
+function onSwingComplete(metrics) {
+  const club = getClub($('#clubSelect').value);
+  const chsMps = state.analyzer.estimateClubheadSpeed(club.lengthM);
+  const launch = launchConditions(club, chsMps);
+  const flight = simulateFlight({ ...launch, rho: currentAirDensity() });
+  const review = evaluateSwing(metrics);
+
+  state.swingCount += 1;
+  state.history.unshift({ n: state.swingCount, club, chsMps, launch, flight, metrics, review });
+  if (state.history.length > 20) state.history.pop();
+
+  renderResults(state.history[0]);
+  if (navigator.vibrate) navigator.vibrate(60);
+}
+
+function renderResults(swing) {
+  const { club, chsMps, launch, flight, metrics, review } = swing;
+  $('#results').classList.remove('hidden');
+
+  // Hero: carry distance.
+  $('#carryValue').textContent = toDistUnit(flight.carryM).toFixed(0);
+  $('#carryUnit').textContent = distUnitLabel();
+  $('#carryClub').textContent =
+    `${club.name} · ${metrics ? `swing #${swing.n}` : `range shot #${swing.n}`}`;
+
+  const tiles = [
+    ['Clubhead speed', `${toSpeedUnit(chsMps).toFixed(0)} ${speedUnitLabel()}`],
+    ['Ball speed', `${toSpeedUnit(launch.ballSpeedMps).toFixed(0)} ${speedUnitLabel()}`],
+    ['Total distance', `${toDistUnit(flight.totalM).toFixed(0)} ${distUnitLabel()}`],
+    ['Apex', `${toDistUnit(flight.apexM).toFixed(0)} ${distUnitLabel()}`],
+    ['Launch', `${launch.launchDeg.toFixed(1)}°`],
+    ['Spin', `${Math.round(launch.spinRpm / 10) * 10} rpm`],
+    ['Land angle', `${flight.landAngleDeg.toFixed(0)}°`],
+    ['Flight time', `${flight.flightTimeS.toFixed(1)} s`],
+  ];
+  if (metrics) {
+    tiles.push(
+      ['Tempo', metrics.tempoRatio ? `${metrics.tempoRatio.toFixed(1)} : 1` : '—'],
+      ['X-Factor', `${metrics.xFactor.toFixed(0)}°`],
+      ['Shoulder turn', `${metrics.shoulderTurn.toFixed(0)}°`],
+      ['Hip turn', `${metrics.hipTurn.toFixed(0)}°`]
+    );
+  }
+  const grid = $('#statGrid');
+  grid.innerHTML = '';
+  for (const [label, value] of tiles) {
+    const tile = document.createElement('div');
+    tile.className = 'stat';
+    tile.innerHTML = `<div class="stat-label"></div><div class="stat-value"></div>`;
+    tile.querySelector('.stat-label').textContent = label;
+    tile.querySelector('.stat-value').textContent = value;
+    grid.appendChild(tile);
+  }
+
+  // Trajectory replay.
+  state.trajectory.show(flight);
+
+  // Swing score + advice (camera swings only — a range shot has no form data).
+  $('#reviewCard').classList.toggle('hidden', !review);
+  if (!review) {
+    renderHistory();
+    return;
+  }
+  $('#scoreValue').textContent = review.score;
+  const list = $('#adviceList');
+  list.innerHTML = '';
+  for (const f of review.findings) {
+    const li = document.createElement('li');
+    li.className = `finding sev-${f.severity}`;
+    const icon = { good: '✓', info: 'ℹ', minor: '△', major: '✕' }[f.severity];
+    const sevLabel = { good: 'Good', info: 'Note', minor: 'Minor', major: 'Fix first' }[f.severity];
+    li.innerHTML = `
+      <div class="finding-head">
+        <span class="finding-icon" aria-hidden="true"></span>
+        <span class="finding-sev"></span>
+        <span class="finding-title"></span>
+        <span class="finding-measured"></span>
+      </div>
+      <p class="finding-detail"></p>
+      ${f.drill ? '<p class="finding-drill"></p>' : ''}`;
+    li.querySelector('.finding-icon').textContent = icon;
+    li.querySelector('.finding-sev').textContent = sevLabel;
+    li.querySelector('.finding-title').textContent = f.title;
+    li.querySelector('.finding-measured').textContent = `${f.measured} (target ${f.target})`;
+    li.querySelector('.finding-detail').textContent = f.detail;
+    if (f.drill) li.querySelector('.finding-drill').textContent = `Drill: ${f.drill}`;
+    list.appendChild(li);
+  }
+
+  renderHistory();
+}
+
+function renderHistory() {
+  const tbody = $('#historyBody');
+  tbody.innerHTML = '';
+  for (const s of state.history) {
+    const tr = document.createElement('tr');
+    const cells = [
+      `#${s.n}`,
+      s.club.name,
+      `${toSpeedUnit(s.chsMps).toFixed(0)} ${speedUnitLabel()}`,
+      `${toDistUnit(s.flight.carryM).toFixed(0)} ${distUnitLabel()}`,
+      `${toDistUnit(s.flight.totalM).toFixed(0)} ${distUnitLabel()}`,
+      s.review ? `${s.review.score}` : '—',
+    ];
+    for (const c of cells) {
+      const td = document.createElement('td');
+      td.textContent = c;
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  $('#historyWrap').classList.toggle('hidden', state.history.length === 0);
+}
+
+// ── Wire-up ──────────────────────────────────────────────────────────────
+
+async function init() {
+  buildClubSelect();
+  state.trajectory = new TrajectoryView($('#trajCanvas'));
+  window.addEventListener('resize', () => state.trajectory.resize());
+
+  const MODEL_BLOCKED_MSG =
+    'Live tracking needs internet access to fetch the pose model, and this ' +
+    'environment is blocking it. Range mode below works fully — or run the app ' +
+    'locally (see README) for camera analysis.';
+
+  $('#startCamera').addEventListener('click', async () => {
+    $('#loadStatus').textContent = '';
+    try {
+      if (!state.landmarker) await loadModel();
+      await startCamera();
+    } catch (e) {
+      $('#loadStatus').textContent = MODEL_BLOCKED_MSG;
+    }
+  });
+
+  $('#videoFile').addEventListener('change', async (ev) => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    $('#loadStatus').textContent = '';
+    try {
+      if (!state.landmarker) await loadModel();
+      await loadVideoFile(file);
+    } catch (e) {
+      $('#loadStatus').textContent = MODEL_BLOCKED_MSG;
+    }
+  });
+
+  const refreshRangeLabel = () => {
+    const mph = parseFloat($('#rangeSpeed').value);
+    $('#rangeSpeedValue').textContent =
+      `${toSpeedUnit(mph * MPH_TO_MPS).toFixed(0)} ${speedUnitLabel()}`;
+  };
+  $('#rangeSpeed').addEventListener('input', refreshRangeLabel);
+  $('#rangeSimulate').addEventListener('click', simulateRangeShot);
+  refreshRangeLabel();
+
+  $('#unitToggle').addEventListener('change', (ev) => {
+    state.units = ev.target.checked ? 'm' : 'yd';
+    state.trajectory.setUnits(state.units);
+    refreshRangeLabel();
+    if (state.history.length) renderResults(state.history[0]);
+  });
+
+  $('#mirrorToggle').addEventListener('change', (ev) => {
+    $('#stage').classList.toggle('mirrored', ev.target.checked);
+  });
+
+  for (const id of ['handedness', 'calibration']) {
+    $('#' + id).addEventListener('change', () => makeAnalyzer());
+  }
+  $('#calibration').addEventListener('input', () => {
+    $('#calibrationValue').textContent = `${Math.round(parseFloat($('#calibration').value) * 100)}%`;
+  });
+
+  $('#settingsToggle').addEventListener('click', () => {
+    $('#settingsPanel').classList.toggle('hidden');
+  });
+}
+
+init();
+
+  </script>
+</body>
+</html>

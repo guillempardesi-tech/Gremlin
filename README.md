@@ -9,8 +9,13 @@ leaves the device.
 
 ## Quick start
 
-The app is a static site, but the camera API requires a secure context, so serve
-it rather than double-clicking `index.html`:
+**Easiest:** download `swinglab-standalone.html` (the whole app bundled into one
+file) and double-click it. Chrome/Edge treat `file://` pages as a secure
+context, so the camera works; the pose model streams from a CDN on first use.
+Rebuild it any time with `node tools/build-standalone.mjs`.
+
+**Or serve the source** (`index.html` uses ES module files, which browsers
+block over `file://`):
 
 ```bash
 # either
@@ -23,6 +28,11 @@ Open the printed URL (on a phone: use the same Wi-Fi + your machine's LAN IP, or
 any HTTPS tunnel — `localhost` is only "secure" on the machine itself). First
 load fetches the MediaPipe pose model (~9 MB) from a CDN, so the first run needs
 internet; pose inference itself is fully local.
+
+**No camera handy?** Range mode (on the start screen) takes a club + clubhead
+speed and runs the same calibrated physics — full distance readout and
+trajectory, no tracking. It's also the working mode in sandboxed environments
+(e.g. a Claude Artifact) that block camera and CDN access.
 
 **Camera setup for best accuracy**
 
@@ -156,16 +166,18 @@ A camera is not a Doppler radar. Treat the outputs as **good estimates**:
 ## Repo layout
 
 ```
-index.html            app shell
-css/style.css         dark, video-first UI
-js/main.js            camera + MediaPipe loop + UI orchestration
-js/swing.js           One-Euro filtering, phase machine, biomechanics, CHS estimator
-js/clubs.js           15-club database (TrackMan tour anchors)
-js/physics.js         drag + Magnus RK4 flight simulator (calibrated)
-js/advice.js          fault rules → advice + swing score
-js/trajectory.js      animated ball-flight chart
-tools/validate.mjs    physics validation & calibration harness
-tools/test-swing.mjs  end-to-end synthetic-swing pipeline test
+index.html                 app shell
+swinglab-standalone.html   the whole app in one double-clickable file (built)
+css/style.css              dark, video-first UI
+js/main.js                 camera + MediaPipe loop + UI orchestration
+js/swing.js                One-Euro filtering, phase machine, biomechanics, CHS estimator
+js/clubs.js                15-club database (TrackMan tour anchors)
+js/physics.js              drag + Magnus RK4 flight simulator (calibrated)
+js/advice.js               fault rules → advice + swing score
+js/trajectory.js           animated ball-flight chart
+tools/validate.mjs         physics validation & calibration harness
+tools/test-swing.mjs       end-to-end synthetic-swing pipeline test
+tools/build-standalone.mjs single-file bundler (also emits an artifact variant)
 ```
 
 Run the checks any time:
