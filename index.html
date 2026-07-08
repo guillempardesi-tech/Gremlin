@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SwingLab — real-time golf swing analyzer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9B%B3%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">⛳</span>
+      <div>
+        <h1>SwingLab</h1>
+        <p class="tagline">Swing analysis · calibrated flight physics</p>
+      </div>
+    </div>
+    <button id="settingsToggle" class="ghost-btn" aria-label="Settings">⚙ Settings</button>
+  </header>
+
+  <section id="settingsPanel" class="settings hidden">
+    <div class="setting">
+      <label for="handedness">Handedness</label>
+      <select id="handedness">
+        <option value="right" selected>Right-handed</option>
+        <option value="left">Left-handed</option>
+      </select>
+    </div>
+    <div class="setting">
+      <label for="unitToggle">Metric units</label>
+      <input type="checkbox" id="unitToggle" />
+    </div>
+    <div class="setting">
+      <label for="mirrorToggle">Mirror view</label>
+      <input type="checkbox" id="mirrorToggle" />
+    </div>
+    <div class="setting">
+      <label for="calibration">Speed calibration <span id="calibrationValue">100%</span></label>
+      <input type="range" id="calibration" min="0.7" max="1.3" step="0.01" value="1.0" />
+    </div>
+    <div class="setting">
+      <label for="temperature">Air temp (°C)</label>
+      <input type="number" id="temperature" value="20" min="-20" max="45" />
+    </div>
+    <div class="setting">
+      <label for="altitude">Altitude (m)</label>
+      <input type="number" id="altitude" value="0" min="0" max="4000" step="50" />
+    </div>
+  </section>
+
+  <main class="layout">
+    <section class="capture-col">
+      <div id="startOverlay" class="start-overlay">
+        <div class="sim-card">
+          <div class="sim-head">
+            <span class="sim-eyebrow">Shot simulator</span>
+            <h2>Pick a club, set your speed, hit it.</h2>
+            <p class="sim-sub">The full calibrated ball-flight physics — carry, apex, spin and roll.
+              Works everywhere, no camera needed.</p>
+          </div>
+
+          <div class="sim-grid">
+            <div class="field field-club">
+              <label for="clubSelect">Club</label>
+              <select id="clubSelect" class="club-select" aria-label="Select golf club"></select>
+              <span id="clubInfo" class="club-info"></span>
+            </div>
+
+            <div class="field field-speed">
+              <label for="rangeSpeed">Clubhead speed <strong id="rangeSpeedValue">90 mph</strong></label>
+              <input type="range" id="rangeSpeed" min="40" max="130" step="1" value="90" />
+              <div class="preset-row" id="speedPresets" role="group" aria-label="Speed presets">
+                <button type="button" class="preset-chip" data-mph="75">Beginner<span>75</span></button>
+                <button type="button" class="preset-chip" data-mph="90">Amateur<span>90</span></button>
+                <button type="button" class="preset-chip" data-mph="100">Avid<span>100</span></button>
+                <button type="button" class="preset-chip" data-mph="113">Tour<span>113</span></button>
+              </div>
+            </div>
+          </div>
+
+          <button id="rangeSimulate" class="primary-btn btn-hero">⛳ Simulate shot</button>
+        </div>
+
+        <div class="live-card">
+          <div class="live-head">
+            <span class="live-eyebrow">Live swing tracking</span>
+            <p class="live-sub">Point a camera at a face-on swing for a measured clubhead speed and a
+              full form review. Address the ball, hold still half a second, then swing — detection is automatic.</p>
+          </div>
+          <div class="start-actions">
+            <button id="startCamera" class="ghost-btn">▶ Start camera</button>
+            <label class="ghost-btn file-btn">
+              ⬆ Analyse a video file
+              <input type="file" id="videoFile" accept="video/*" hidden />
+            </label>
+          </div>
+          <p id="loadStatus" class="load-status" role="status"></p>
+          <p id="envNote" class="env-note"></p>
+          <p class="fineprint">All processing runs locally in your browser — no video ever leaves your device.</p>
+        </div>
+      </div>
+
+      <div id="stage" class="stage hidden">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div class="stage-hud">
+          <span id="phaseBadge" class="phase-badge" data-phase="idle">Waiting for address…</span>
+          <span id="liveSpeed" class="live-speed"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="results-col">
+      <div id="results" class="hidden">
+        <div class="hero-card">
+          <div class="hero-top">
+            <div class="hero-label">Carry distance</div>
+            <span id="pbBadge" class="pb-badge hidden">◆ New personal best</span>
+          </div>
+          <div class="hero-row">
+            <span id="carryValue" class="hero-figure">–</span>
+            <span id="carryUnit" class="hero-unit">yd</span>
+          </div>
+          <div class="hero-foot">
+            <div id="carryClub" class="hero-sub"></div>
+            <div id="carryDelta" class="hero-delta"></div>
+          </div>
+        </div>
+
+        <div id="statGrid" class="stat-grid"></div>
+
+        <div class="card">
+          <h3>Ball flight</h3>
+          <div class="traj-wrap">
+            <canvas id="trajCanvas" class="traj-canvas"></canvas>
+            <div id="trajTip" class="traj-tip hidden"></div>
+          </div>
+        </div>
+
+        <div class="card" id="reviewCard">
+          <div class="score-row">
+            <h3>Swing review</h3>
+            <div class="score-pill">Score <strong id="scoreValue">–</strong>/100</div>
+          </div>
+          <ul id="adviceList" class="advice-list"></ul>
+        </div>
+
+      </div>
+
+      <div class="card leaderboard-card">
+        <div class="score-row">
+          <h3>Personal leaderboard</h3>
+          <button id="lbClear" class="ghost-btn btn-small hidden">Clear</button>
+        </div>
+        <p id="lbNote" class="lb-note"></p>
+        <p id="leaderboardEmpty" class="lb-empty">Your ten longest shots will be kept here — hit one.</p>
+        <ol id="leaderboardList" class="lb-list"></ol>
+      </div>
+
+      <div id="resultsTail">
+        <div id="historyWrap" class="card hidden">
+          <h3>Session history</h3>
+          <div class="table-scroll">
+            <table class="history">
+              <thead>
+                <tr><th>Swing</th><th>Club</th><th>Club speed</th><th>Carry</th><th>Total</th><th>Score</th></tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card methodology">
+        <h3>How the numbers are made</h3>
+        <p>
+          Pose is tracked in 3D at video rate (MediaPipe BlazePose, metric world landmarks,
+          One-Euro filtered). Clubhead speed is estimated from your peak hand speed through the
+          double-pendulum lever geometry of the swing. Ball speed, launch and spin come from your
+          selected club's impact model anchored to published TrackMan tour data, and the flight is
+          integrated with a spin-dependent drag + Magnus-lift model (RK4) calibrated to reproduce
+          tour carries within ~2%. Form advice compares your tempo, X-Factor, posture and release
+          timing against motion-capture norms from the golf-science literature. A camera is not a
+          radar: treat distances as good estimates, not gospel.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
