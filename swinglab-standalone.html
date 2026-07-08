@@ -202,41 +202,139 @@ button { transition: transform 0.12s ease, background 0.15s ease, border-color 0
 
 /* ── Capture column ─────────────────────────────────────────────────── */
 
-.start-overlay {
-  background: linear-gradient(180deg, #151d17 0%, var(--surface) 100%);
+.start-overlay { display: flex; flex-direction: column; gap: 16px; }
+
+/* Primary: the shot simulator — the hero of the landing, works everywhere. */
+.sim-card {
+  position: relative;
+  background:
+    radial-gradient(560px 220px at 12% -20%, rgba(216, 180, 106, 0.12) 0%, transparent 62%),
+    linear-gradient(180deg, #17211a 0%, var(--surface) 100%);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 28px;
+  padding: 22px;
   box-shadow: var(--shadow);
+  overflow: hidden;
 }
-.start-overlay h2 {
-  font-family: var(--display);
-  font-size: 21px;
-  font-weight: 700;
-  margin-bottom: 14px;
-  text-wrap: balance;
+.sim-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold) 0%, rgba(216, 180, 106, 0.05) 82%);
 }
-.start-overlay ol { margin: 0 0 20px 20px; color: var(--ink-2); }
-.start-overlay li { margin-bottom: 7px; }
-.start-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-.file-btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-.load-status { margin-top: 12px; color: var(--warning); font-size: 13px; min-height: 1.2em; }
-.fineprint { margin-top: 12px; color: var(--muted); font-size: 12px; }
-
-.range-mode { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--grid); }
-.range-mode h3 {
+.sim-head { margin-bottom: 18px; }
+.sim-eyebrow {
+  display: inline-block;
   font-size: 11px;
   font-weight: 650;
   color: var(--gold);
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 1.8px;
+  margin-bottom: 8px;
+}
+.sim-head h2 {
+  font-family: var(--display);
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
   margin-bottom: 6px;
 }
-.range-hint { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
-.range-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.range-controls label { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
-.range-controls strong { color: var(--ink); font-variant-numeric: tabular-nums; }
-.range-controls input[type="range"] { flex: 1; min-width: 150px; accent-color: var(--gold); }
+.sim-sub { font-size: 13.5px; color: var(--muted); max-width: 46ch; }
+
+.sim-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+@media (max-width: 560px) { .sim-grid { grid-template-columns: 1fr; } }
+
+.field { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.field > label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+}
+.field > label strong { color: var(--gold-bright); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
+.club-select {
+  width: 100%;
+  font-size: 17px;
+  font-weight: 600;
+  padding: 12px 14px;
+  border-radius: 11px;
+  background:
+    var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23d8b46a' d='M1 1l5 5 5-5'/%3E%3C/svg%3E")
+    no-repeat right 14px center;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.club-select:hover { border-color: var(--gold-dim); }
+.club-info { font-size: 12px; color: var(--muted); }
+
+.field-speed input[type="range"] { width: 100%; accent-color: var(--gold); margin-top: 2px; }
+.preset-row { display: flex; gap: 7px; flex-wrap: wrap; }
+.preset-chip {
+  flex: 1;
+  min-width: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 6px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.preset-chip span { font-size: 13px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+.preset-chip:hover { border-color: var(--gold-dim); }
+.preset-chip.active {
+  border-color: var(--gold);
+  background: var(--gold-faint);
+  color: var(--gold-bright);
+}
+.preset-chip.active span { color: var(--gold-bright); }
+
+.btn-hero { width: 100%; font-size: 16px; padding: 13px; }
+
+/* Secondary: live camera / video — the local-app upgrade. */
+.live-card {
+  background: linear-gradient(180deg, #141b16 0%, #111713 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+}
+.live-eyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 7px;
+}
+.live-sub { font-size: 13px; color: var(--muted); margin-bottom: 15px; max-width: 52ch; }
+.start-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.file-btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.load-status { margin-top: 12px; color: var(--warning); font-size: 13px; }
+.load-status:empty { margin-top: 0; }
+.env-note {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  border-left: 2px solid var(--gold-dim);
+  padding-left: 11px;
+}
+.env-note:empty { display: none; }
+.fineprint { margin-top: 12px; color: var(--muted); font-size: 12px; }
 
 .stage {
   position: relative;
@@ -532,11 +630,6 @@ button { transition: transform 0.12s ease, background 0.15s ease, border-color 0
         <p class="tagline">Swing analysis · calibrated flight physics</p>
       </div>
     </div>
-    <div class="club-picker">
-      <label for="clubSelect">Club</label>
-      <select id="clubSelect" aria-label="Select golf club"></select>
-      <span id="clubInfo" class="club-info"></span>
-    </div>
     <button id="settingsToggle" class="ghost-btn" aria-label="Settings">⚙ Settings</button>
   </header>
 
@@ -573,32 +666,52 @@ button { transition: transform 0.12s ease, background 0.15s ease, border-color 0
   <main class="layout">
     <section class="capture-col">
       <div id="startOverlay" class="start-overlay">
-        <h2>Set up your camera</h2>
-        <ol>
-          <li><strong>Face-on view:</strong> camera pointing at your chest, ball between you and the camera.</li>
-          <li><strong>Full body in frame</strong> — head to feet, roughly 3–4 m away.</li>
-          <li>Good light, steady phone/laptop. 60 fps camera if available.</li>
-          <li>Address the ball, hold still for half a second, then swing. Detection is automatic.</li>
-        </ol>
-        <div class="start-actions">
-          <button id="startCamera" class="primary-btn">▶ Start camera</button>
-          <label class="ghost-btn file-btn">
-            ⬆ Analyse a video file
-            <input type="file" id="videoFile" accept="video/*" hidden />
-          </label>
-        </div>
-        <p id="loadStatus" class="load-status" role="status"></p>
-        <p class="fineprint">All processing runs locally in your browser — no video ever leaves your device.</p>
-
-        <div class="range-mode">
-          <h3>Range mode — no camera needed</h3>
-          <p class="range-hint">Pick a club up top, dial in a clubhead speed, and the same calibrated
-            physics produces the full shot. Handy where camera access is blocked.</p>
-          <div class="range-controls">
-            <label for="rangeSpeed">Clubhead speed <strong id="rangeSpeedValue">90 mph</strong></label>
-            <input type="range" id="rangeSpeed" min="40" max="130" step="1" value="90" />
-            <button id="rangeSimulate" class="primary-btn">Simulate shot</button>
+        <div class="sim-card">
+          <div class="sim-head">
+            <span class="sim-eyebrow">Shot simulator</span>
+            <h2>Pick a club, set your speed, hit it.</h2>
+            <p class="sim-sub">The full calibrated ball-flight physics — carry, apex, spin and roll.
+              Works everywhere, no camera needed.</p>
           </div>
+
+          <div class="sim-grid">
+            <div class="field field-club">
+              <label for="clubSelect">Club</label>
+              <select id="clubSelect" class="club-select" aria-label="Select golf club"></select>
+              <span id="clubInfo" class="club-info"></span>
+            </div>
+
+            <div class="field field-speed">
+              <label for="rangeSpeed">Clubhead speed <strong id="rangeSpeedValue">90 mph</strong></label>
+              <input type="range" id="rangeSpeed" min="40" max="130" step="1" value="90" />
+              <div class="preset-row" id="speedPresets" role="group" aria-label="Speed presets">
+                <button type="button" class="preset-chip" data-mph="75">Beginner<span>75</span></button>
+                <button type="button" class="preset-chip" data-mph="90">Amateur<span>90</span></button>
+                <button type="button" class="preset-chip" data-mph="100">Avid<span>100</span></button>
+                <button type="button" class="preset-chip" data-mph="113">Tour<span>113</span></button>
+              </div>
+            </div>
+          </div>
+
+          <button id="rangeSimulate" class="primary-btn btn-hero">⛳ Simulate shot</button>
+        </div>
+
+        <div class="live-card">
+          <div class="live-head">
+            <span class="live-eyebrow">Live swing tracking</span>
+            <p class="live-sub">Point a camera at a face-on swing for a measured clubhead speed and a
+              full form review. Address the ball, hold still half a second, then swing — detection is automatic.</p>
+          </div>
+          <div class="start-actions">
+            <button id="startCamera" class="ghost-btn">▶ Start camera</button>
+            <label class="ghost-btn file-btn">
+              ⬆ Analyse a video file
+              <input type="file" id="videoFile" accept="video/*" hidden />
+            </label>
+          </div>
+          <p id="loadStatus" class="load-status" role="status"></p>
+          <p id="envNote" class="env-note"></p>
+          <p class="fineprint">All processing runs locally in your browser — no video ever leaves your device.</p>
         </div>
       </div>
 
@@ -689,7 +802,8 @@ button { transition: transform 0.12s ease, background 0.15s ease, border-color 0
     </section>
   </main>
 
-  <script type="module">
+  <script>
+(function () {
 
 /* ── js/clubs.js ───────────────────────────────────────── */
 /**
@@ -2613,14 +2727,28 @@ async function init() {
     }
   });
 
+  const syncPresets = () => {
+    const mph = Math.round(parseFloat($('#rangeSpeed').value));
+    for (const chip of document.querySelectorAll('.preset-chip')) {
+      chip.classList.toggle('active', parseInt(chip.dataset.mph, 10) === mph);
+    }
+  };
   const refreshRangeLabel = () => {
     const mph = parseFloat($('#rangeSpeed').value);
     $('#rangeSpeedValue').textContent =
       `${toSpeedUnit(mph * MPH_TO_MPS).toFixed(0)} ${speedUnitLabel()}`;
+    syncPresets();
   };
   $('#rangeSpeed').addEventListener('input', refreshRangeLabel);
   $('#rangeSpeed').addEventListener('change', saveSettings);
   $('#rangeSimulate').addEventListener('click', simulateRangeShot);
+  for (const chip of document.querySelectorAll('.preset-chip')) {
+    chip.addEventListener('click', () => {
+      $('#rangeSpeed').value = chip.dataset.mph;
+      refreshRangeLabel();
+      saveSettings();
+    });
+  }
   refreshRangeLabel();
 
   $('#unitToggle').addEventListener('change', (ev) => {
@@ -2680,11 +2808,24 @@ async function init() {
       'This environment blocks browser storage, so the leaderboard lasts for this visit only. ' +
       'Open the app locally to keep it forever.';
   }
+
+  // Camera + model download can't run inside an embedded/sandboxed page
+  // (e.g. a Claude artifact). Tell the user up front and point them at the
+  // simulator, which works everywhere.
+  const embedded = window.self !== window.top;
+  const noCamera = !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  if (embedded || noCamera) {
+    $('#envNote').textContent =
+      'Heads up: live camera tracking needs the downloaded app. This embedded view can’t open ' +
+      'the camera or fetch the pose model — the shot simulator above works fully here.';
+  }
+
   renderLeaderboard();
 }
 
 init();
 
+})();
   </script>
 </body>
 </html>

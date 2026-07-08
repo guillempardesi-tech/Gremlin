@@ -34,12 +34,18 @@ for (const name of ORDER) {
   bundle += `\n/* ── js/${name}.js ───────────────────────────────────────── */\n${src}`;
 }
 
+// Emit a CLASSIC (non-module) script wrapped in an IIFE — never a
+// `type="module"` script. Claude Artifacts and other embeds run inside a
+// sandboxed iframe with an OPAQUE origin, where inline ES module scripts
+// silently refuse to execute (clubs never populate, buttons do nothing).
+// Classic scripts run fine there, and the bundle is already a flat
+// concatenation with imports/exports stripped, so IIFE scoping is all it needs.
 let html = await readFile(join(ROOT, 'index.html'), 'utf8');
 html = html
   .replace(/[ \t]*<link rel="stylesheet"[^>]*\/>\s*\n/, `  <style>\n${css}\n  </style>\n`)
   .replace(
     /[ \t]*<script type="module" src="js\/main\.js"><\/script>/,
-    `  <script type="module">\n${bundle}\n  </script>`
+    `  <script>\n(function () {\n${bundle}\n})();\n  </script>`
   );
 
 await writeFile(join(ROOT, 'swinglab-standalone.html'), html);

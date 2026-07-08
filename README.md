@@ -29,10 +29,12 @@ any HTTPS tunnel — `localhost` is only "secure" on the machine itself). First
 load fetches the MediaPipe pose model (~9 MB) from a CDN, so the first run needs
 internet; pose inference itself is fully local.
 
-**No camera handy?** Range mode (on the start screen) takes a club + clubhead
-speed and runs the same calibrated physics — full distance readout and
-trajectory, no tracking. It's also the working mode in sandboxed environments
-(e.g. a Claude Artifact) that block camera and CDN access.
+**No camera handy?** The **shot simulator** is the first thing on the screen:
+pick a club, set a clubhead speed (or tap a preset), and the same calibrated
+physics produces the full distance readout and trajectory — no tracking. It's
+also the complete experience in sandboxed environments (e.g. a Claude Artifact)
+that block camera access and the pose-model download: the app detects that case
+and says so, and live camera tracking is reserved for the downloaded app.
 
 **Camera setup for best accuracy**
 

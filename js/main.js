@@ -595,14 +595,28 @@ async function init() {
     }
   });
 
+  const syncPresets = () => {
+    const mph = Math.round(parseFloat($('#rangeSpeed').value));
+    for (const chip of document.querySelectorAll('.preset-chip')) {
+      chip.classList.toggle('active', parseInt(chip.dataset.mph, 10) === mph);
+    }
+  };
   const refreshRangeLabel = () => {
     const mph = parseFloat($('#rangeSpeed').value);
     $('#rangeSpeedValue').textContent =
       `${toSpeedUnit(mph * MPH_TO_MPS).toFixed(0)} ${speedUnitLabel()}`;
+    syncPresets();
   };
   $('#rangeSpeed').addEventListener('input', refreshRangeLabel);
   $('#rangeSpeed').addEventListener('change', saveSettings);
   $('#rangeSimulate').addEventListener('click', simulateRangeShot);
+  for (const chip of document.querySelectorAll('.preset-chip')) {
+    chip.addEventListener('click', () => {
+      $('#rangeSpeed').value = chip.dataset.mph;
+      refreshRangeLabel();
+      saveSettings();
+    });
+  }
   refreshRangeLabel();
 
   $('#unitToggle').addEventListener('change', (ev) => {
@@ -662,6 +676,18 @@ async function init() {
       'This environment blocks browser storage, so the leaderboard lasts for this visit only. ' +
       'Open the app locally to keep it forever.';
   }
+
+  // Camera + model download can't run inside an embedded/sandboxed page
+  // (e.g. a Claude artifact). Tell the user up front and point them at the
+  // simulator, which works everywhere.
+  const embedded = window.self !== window.top;
+  const noCamera = !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  if (embedded || noCamera) {
+    $('#envNote').textContent =
+      'Heads up: live camera tracking needs the downloaded app. This embedded view can’t open ' +
+      'the camera or fetch the pose model — the shot simulator above works fully here.';
+  }
+
   renderLeaderboard();
 }
 

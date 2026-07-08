@@ -16,11 +16,6 @@
         <p class="tagline">Swing analysis · calibrated flight physics</p>
       </div>
     </div>
-    <div class="club-picker">
-      <label for="clubSelect">Club</label>
-      <select id="clubSelect" aria-label="Select golf club"></select>
-      <span id="clubInfo" class="club-info"></span>
-    </div>
     <button id="settingsToggle" class="ghost-btn" aria-label="Settings">⚙ Settings</button>
   </header>
 
@@ -57,32 +52,52 @@
   <main class="layout">
     <section class="capture-col">
       <div id="startOverlay" class="start-overlay">
-        <h2>Set up your camera</h2>
-        <ol>
-          <li><strong>Face-on view:</strong> camera pointing at your chest, ball between you and the camera.</li>
-          <li><strong>Full body in frame</strong> — head to feet, roughly 3–4 m away.</li>
-          <li>Good light, steady phone/laptop. 60 fps camera if available.</li>
-          <li>Address the ball, hold still for half a second, then swing. Detection is automatic.</li>
-        </ol>
-        <div class="start-actions">
-          <button id="startCamera" class="primary-btn">▶ Start camera</button>
-          <label class="ghost-btn file-btn">
-            ⬆ Analyse a video file
-            <input type="file" id="videoFile" accept="video/*" hidden />
-          </label>
-        </div>
-        <p id="loadStatus" class="load-status" role="status"></p>
-        <p class="fineprint">All processing runs locally in your browser — no video ever leaves your device.</p>
-
-        <div class="range-mode">
-          <h3>Range mode — no camera needed</h3>
-          <p class="range-hint">Pick a club up top, dial in a clubhead speed, and the same calibrated
-            physics produces the full shot. Handy where camera access is blocked.</p>
-          <div class="range-controls">
-            <label for="rangeSpeed">Clubhead speed <strong id="rangeSpeedValue">90 mph</strong></label>
-            <input type="range" id="rangeSpeed" min="40" max="130" step="1" value="90" />
-            <button id="rangeSimulate" class="primary-btn">Simulate shot</button>
+        <div class="sim-card">
+          <div class="sim-head">
+            <span class="sim-eyebrow">Shot simulator</span>
+            <h2>Pick a club, set your speed, hit it.</h2>
+            <p class="sim-sub">The full calibrated ball-flight physics — carry, apex, spin and roll.
+              Works everywhere, no camera needed.</p>
           </div>
+
+          <div class="sim-grid">
+            <div class="field field-club">
+              <label for="clubSelect">Club</label>
+              <select id="clubSelect" class="club-select" aria-label="Select golf club"></select>
+              <span id="clubInfo" class="club-info"></span>
+            </div>
+
+            <div class="field field-speed">
+              <label for="rangeSpeed">Clubhead speed <strong id="rangeSpeedValue">90 mph</strong></label>
+              <input type="range" id="rangeSpeed" min="40" max="130" step="1" value="90" />
+              <div class="preset-row" id="speedPresets" role="group" aria-label="Speed presets">
+                <button type="button" class="preset-chip" data-mph="75">Beginner<span>75</span></button>
+                <button type="button" class="preset-chip" data-mph="90">Amateur<span>90</span></button>
+                <button type="button" class="preset-chip" data-mph="100">Avid<span>100</span></button>
+                <button type="button" class="preset-chip" data-mph="113">Tour<span>113</span></button>
+              </div>
+            </div>
+          </div>
+
+          <button id="rangeSimulate" class="primary-btn btn-hero">⛳ Simulate shot</button>
+        </div>
+
+        <div class="live-card">
+          <div class="live-head">
+            <span class="live-eyebrow">Live swing tracking</span>
+            <p class="live-sub">Point a camera at a face-on swing for a measured clubhead speed and a
+              full form review. Address the ball, hold still half a second, then swing — detection is automatic.</p>
+          </div>
+          <div class="start-actions">
+            <button id="startCamera" class="ghost-btn">▶ Start camera</button>
+            <label class="ghost-btn file-btn">
+              ⬆ Analyse a video file
+              <input type="file" id="videoFile" accept="video/*" hidden />
+            </label>
+          </div>
+          <p id="loadStatus" class="load-status" role="status"></p>
+          <p id="envNote" class="env-note"></p>
+          <p class="fineprint">All processing runs locally in your browser — no video ever leaves your device.</p>
         </div>
       </div>
 
